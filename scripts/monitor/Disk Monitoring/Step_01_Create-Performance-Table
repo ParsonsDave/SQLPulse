@@ -1,0 +1,24 @@
+USE [SQLPulse]
+GO
+
+/****** Object:  Table [dbo].[tblDiskLatency]    Script Date: 3/2/2025 1:51:33 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[tblDiskLatency](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[EventTime] [datetime] NULL,
+	[ReadLatency] [int] NULL,
+	[WriteLatency] [int] NULL,
+	[Latency] [int] NULL,
+	[AvgBPerRead] [int] NULL,
+	[AvgBPerWrite] [int] NULL,
+	[AvgBPerTransfer] [int] NULL,
+	[Drive] [nvarchar](10) NULL,
+	[DatabaseName] [nvarchar](255) NULL,
+	[PhysicalName] [nvarchar](2000) NULL
+) ON [PRIMARY]
+GO
