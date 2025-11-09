@@ -1,0 +1,129 @@
+USE [SQLPulse]
+GO
+
+/****** Object:  StoredProcedure [dbo].[GetBlockingData]    Script Date: 3/2/2025 3:01:55 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+CREATE PROCEDURE [dbo].[GetBlockingData]
+	
+	/* *********************************************************************************
+
+	There are no input or output variables at this time
+
+	********************************************************************************* */
+	
+
+AS
+
+BEGIN
+
+/* *********************************************************************************
+
+Source: SQLPulse: Get Blocking Data
+Build: 1.0
+Build Date: 2025-03-02
+
+Build note: The core data gathering for this sproc is directly from Paul Randall:
+	
+	   http://www.sqlskills.com/blogs/paul/how-to-examine-io-subsystem-latencies-from-within-sql-server/
+
+	   I wrote two different versions of this, one of which was definitely more code-efficient and worked great against systems as old as 2008 R2 - 
+	   BUT, this query is so much more human-readable that I couldn't justify either of my other queries. Being human-readable is extremely important
+	   in this project and Mr. Randall's query is great as-is. As it is his code and not mine, I wanted it documented in this procedure.
+
+This procedure will only archive information that is over a week old. Why a week? Because values can skew high at service startup, *especially* for TempDB
+Waiting a week will allow two items I consider fairly important:
+	1) Smooth out the spike(s)
+	2) Allow weekly maintenance to be included (you ARE running maintenance at LEAST weekly, right? RIGHT??)
+
+For future modification, allowing specification of collection frequency and time before data is valid (instead of the current week) would be advisable/useful/beneficial
+
+This sproc performs the following activities:
+
+   1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+   2) Declare the internal variables
+   3) Create Temp Table for data processing
+   4) Gather and insert the data into the temp table for processing
+   5) Debug line(s) if you pull this out of the sproc and into a normal query
+   6) Remove any previous stats in [dbo].[tblBlockingHistory] since the last server restart
+		-- This is because blocking stats are aggregate since the last server restart
+		-- so we only need to keep the most recent pull of the data
+   6) Debug Line if you pull this out of the sproc and into a normal query
+   7) Insert the current stats into [dbo].[tblBlockingHistory]
+   8) Object cleanup
+
+
+
+********************************************************************************* */
+
+-- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+
+	EXECUTE [dbo].[UpdateLastServerStart]
+
+
+-- 2) Declare the internal variables
+
+	DECLARE @RunDate datetime = CAST(GetDate() as smalldatetime)
+	DECLARE @LastServerRestart datetime = (Select Top 1 RestartDate from [dbo].[tblServerRestartDates] order by RestartDate DESC)
+		
+
+-- 3) Create Temp Table for data processing
+
+	CREATE TABLE #tempBlockingHistory(
+		[RunDate] [datetime] NULL,
+		[DatabaseName] nvarchar(200) NULL,
+		[DBObject] nvarchar(200) NULL,
+		[BlockWaitTimeMS] [int] NULL
+		)
+
+
+-- 4) Gather and insert the data into the temp table for processing
+
+	INSERT INTO #tempBlockingHistory
+
+	SELECT 
+		@RunDate,
+		db_name(database_id) DatabaseName,
+		QUOTENAME(OBJECT_SCHEMA_NAME(object_id, database_id)) + N'.' + QUOTENAME(OBJECT_NAME(object_id, database_id)),
+		row_lock_wait_in_ms + page_lock_wait_in_ms
+		from sys.dm_db_index_operational_stats(NULL,NULL,NULL,NULL)
+		
+
+-- 5) Debug line(s) if you pull this out of the sproc and into a normal query
+
+	--Select * from #tempBlockingHistory order by BlockWaitTimeMS DESC, DBObject DESC
+
+
+--6) Remove any previous stats in [dbo].[tblBlockingHistory] since the last server restart
+		-- This is because blocking stats are aggregate since the last server restart
+		-- so we only need to keep the most recent pull of the data
+
+	BEGIN TRANSACTION
+		DELETE [dbo].[tblBlockingHistory] Where RunDate > @LastServerRestart
+	COMMIT
+
+
+-- 7) Insert the current stats into [dbo].[tblBlockingHistory]
+
+	INSERT INTO [dbo].[tblBlockingHistory]
+		SELECT
+			Rundate,
+			DatabaseName,
+			DBObject,
+			BlockWaitTimeMS
+		FROM #tempBlockingHistory
+		ORDER BY BlockWaitTimeMS DESC, DBObject DESC
+
+-- 8) Object cleanup
+
+	DROP TABLE #tempBlockingHistory
+
+
+END
+GO
