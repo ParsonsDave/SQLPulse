@@ -1,0 +1,154 @@
+USE [SQLPulse]
+GO
+
+/****** Object:  StoredProcedure [dbo].[GetDiskLatency]    Script Date: 3/2/2025 1:50:22 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+CREATE PROCEDURE [dbo].[GetDiskLatency]
+	
+	/* *********************************************************************************
+
+	There are no input or output variables at this time
+
+	********************************************************************************* */
+	
+
+AS
+
+BEGIN
+
+/* *********************************************************************************
+
+Source: SQLPulse: Get Disk Latency
+Build: 1.0
+Build Date: 2025-03-02
+
+Build note: The core data gathering for this sproc is directly from Paul Randall:
+	
+	   http://www.sqlskills.com/blogs/paul/how-to-examine-io-subsystem-latencies-from-within-sql-server/
+
+	   I wrote two different versions of this, one of which was definately more code-efficient and worked great against systems as old as 2008 R2 - 
+	   BUT, this query is so much more human-readable that I couldn't justify either of my other queries. Being human-readable is extremely important
+	   in this project and Mr. Randall's query is great as-is. As it is his code and not mine, I wanted it documented in this procedure.
+
+This procedure will only archive information that is over a week old. Why a week? Because values can skew high at service startup, *especially* for TempDB
+Waiting a week will allow two items I consider fairly important:
+	1) Smooth out the spike(s)
+	2) Allow weekly maintenance to be included (you ARE running maintenance at LEAST weekly, right? RIGHT??)
+
+For future modification, allowing specification of collection frequency and time before data is valid (instead of the current week) would be advisable/useful/beneficial
+
+This sproc performs the following activities:
+
+   1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+   2) Declare the internal variables
+   3) Create Temp Table for data processing
+   4) Gather and insert the data into the temp table for processing
+   5) Insert the data into the archive table if it is more than a week since the server restart
+		-- The code to prevent duplicates is present despite not being needed
+		-- As noted previously, this is where a variable would be used to adjust the monitor period
+   6) Debug Line if you pull this out of the sproc and into a normal query
+   7) Object cleanup
+
+
+********************************************************************************* */
+
+-- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+
+	EXECUTE [dbo].[UpdateLastServerStart]
+
+-- 2) Declare the internal variables
+
+	Declare @EventTime as datetime = (SELECT CAST(GetDate() AS smalldatetime))
+	Declare @LastRestart as datetime = (SELECT TOP 1 RestartDate FROM tblServerRestartDates)
+	-- Declare @MinimumMonitorAge as int -- For future use as a user-configurable parameter
+
+
+-- 3) Create Temp Table for data processing
+
+	CREATE TABLE #tempDiskLatency(
+		[EventTime] [datetime] NULL,
+		[ReadLatency] [int] NULL,
+		[WriteLatency] [int] NULL,
+		[Latency] [int] NULL,
+		[AvgBPerRead] [int] NULL,
+		[AvgBPerWrite] [int] NULL,
+		[AvgBPerTransfer] [int] NULL,
+		[Drive] nvarchar(10),
+		[DatabaseName] nvarchar(255) NULL,
+		[PhysicalName] nvarchar(2000) NULL
+		)
+		
+
+-- 4) Gather and insert the data into the temp table for processing
+
+	INSERT INTO #tempDiskLatency
+
+	SELECT
+		GETDATE() AS [EventTime],
+		[ReadLatency] =
+			CASE WHEN [num_of_reads] = 0
+				THEN 0 ELSE ([io_stall_read_ms] / [num_of_reads]) END,
+		[WriteLatency] =
+			CASE WHEN [num_of_writes] = 0
+				THEN 0 ELSE ([io_stall_write_ms] / [num_of_writes]) END,
+		[Latency] =
+			CASE WHEN ([num_of_reads] = 0 AND [num_of_writes] = 0)
+				THEN 0 ELSE ([io_stall] / ([num_of_reads] + [num_of_writes])) END,
+		[AvgBPerRead] =
+			CASE WHEN [num_of_reads] = 0
+				THEN 0 ELSE ([num_of_bytes_read] / [num_of_reads]) END,
+		[AvgBPerWrite] =
+			CASE WHEN [num_of_writes] = 0
+				THEN 0 ELSE ([num_of_bytes_written] / [num_of_writes]) END,
+		[AvgBPerTransfer] =
+			CASE WHEN ([num_of_reads] = 0 AND [num_of_writes] = 0)
+				THEN 0 ELSE
+					(([num_of_bytes_read] + [num_of_bytes_written]) /
+					([num_of_reads] + [num_of_writes])) END,
+		LEFT ([mf].[physical_name], 2) AS [Drive],
+		DB_NAME ([vfs].[database_id]) AS [DatabaseName],
+		[mf].[physical_name]
+	FROM
+		sys.dm_io_virtual_file_stats (NULL,NULL) AS [vfs]
+		JOIN sys.master_files AS [mf]
+	ON [vfs].[database_id] = [mf].[database_id]
+		AND [vfs].[file_id] = [mf].[file_id]
+	-- WHERE [vfs].[file_id] = 2 -- log files
+	 ORDER BY [Latency] DESC
+	--ORDER BY [ReadLatency] DESC
+	--ORDER BY [WriteLatency] DESC;
+
+
+-- 5) Insert the data into the archive table if it is more than a week since the server restart
+		-- The code to prevent duplicates is present despite not being needed
+		-- As noted previously, this is where a variable would be used to adjust the monitor period
+
+	If ABS((DATEDIFF (day, @EventTime, @LastRestart ))) >=7 
+
+		INSERT INTO [DBA].[dbo].[tblDiskLatency] (EventTime, ReadLatency, WriteLatency, Latency, AvgBPerRead, AvgBPerWrite, AvgBPerTransfer, Drive, DatabaseName, PhysicalName)
+		SELECT EventTime, ReadLatency, WriteLatency, Latency, AvgBPerRead, AvgBPerWrite, AvgBPerTransfer, Drive, DatabaseName, PhysicalName
+		FROM #tempDiskLatency t
+		WHERE NOT EXISTS (SELECT 1 FROM [DBA].[dbo].[tblDiskLatency] d
+		WHERE (CAST(EventTime AS smalldatetime) = CAST(t.EventTime AS smalldatetime)));
+
+
+--6) Debug Line if you pull this out of the sproc and into a normal query
+
+	--Select * from #tempDiskLatency
+
+	--Select * From tblDiskLatency
+	
+-- 7) Object cleanup
+
+	drop table #tempDiskLatency
+
+
+END
+GO
