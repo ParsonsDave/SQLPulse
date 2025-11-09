@@ -1,0 +1,105 @@
+-- Basic article, includes 'adaptive' formula that ultimately comes from Jonathan Kehayias
+
+https://www.sqlshack.com/page-life-expectancy-ple-in-sql-server/
+
+
+-- Paul Randall Article from 2011, updated in 2015
+-- This is the article that the 2020-2023 spate of articles all seem to go back to as the basis for why PLE is obsolete, without seeming to realize the irony of referencing a 10+ year old article as the basis for that opinion
+
+https://www.sqlskills.com/blogs/paul/page-life-expectancy-isnt-what-you-think/
+
+-- Here is the aforementioned article from Jonathan Kehayias that seems to have prompted the 2011 "insider" series of articles agreeing that PLE was bad and you should feel bad for thinking it's useful
+
+https://www.sqlskills.com/blogs/jonathan/finding-what-queries-in-the-plan-cache-use-a-specific-index/
+
+-- And this is Brent Ozar's article that seems to have kicked off the most recent set of "PLE bad" articles. It's Ozar - he knows his stuff inside out and will be the best representation of the opinion
+
+https://www.brentozar.com/archive/2020/06/page-life-expectancy-doesnt-mean-jack-and-you-should-stop-looking-at-it/
+
+
+------------------------------------------------------------------
+
+-- My personal thoughts on the articles
+While cleaning out my digital closet, I came across a stream-of-consciousness post I’d abandoned back in 2023 while doing some research on performance metrics and waits. It started when I came upon Brent Ozar’s post about having removed PLE from sp_BlitzFirst, and after reading it, I completely agreed with his decision to do so, but I found myself disagreeing with his conclusion: 
+
+Page Life Expectancy Doesn’t Mean Jack, and You Should Stop Looking At It 
+
+I followed the links down the rabbit hole to articles by both Jonathan Kehayias and Paul Randall, and found them to be very well-written, when they were written – but some considerations are not (as) relevant today. 
+The key arguments boil down to: 
+	1. PLE is old and was designed when data being cycled through was much lower than now
+	2. PLE is an incrementing counter at a value of 1 per real world second and flushes when a large enough memory cycle happens
+	3. PLE is reactionary and doesn't tell you WHY it dropped
+	4. PLE is useless when SQL starts up because data is being loaded into RAM, in bulk, for some undefined period of time
+	5. With the expansion of system architecture over the past 20 years, multiple NUMA nodes means values are being averaged out and so may hide real problems in specific nodes
+
+ All these points have validity from a DBA standpoint, but they can be looked at from a systems standpoint.
+  
+	1. PLE is old and was designed when data being cycled through was much lower than now
+
+This point is addressed very well in Jonathan Kehayias' article in these paragraphs: 
+
+Aside from being a performance metric that was recommended by Microsoft that has never been updated to reflect the changes that have occurred in hardware over the last 12 years, there is nothing wrong with this recommendation (i.e. sarcasm… :-)).  The problem with this fixed value is that it was determined when servers generally had 4GB of RAM installed in them, and servers with 16GB+ of RAM installed in them were extremely expensive and fairly rare. 
+
+This performance counter tells you the number of seconds, at the current point in time, a page will remain in memory without being referenced (so a value of 300 means your buffer pool is flushing every 5 minutes).  So 10 years ago when you were reading anywhere from 1.7GB up to 12GB of data (depending on your server’s memory) from disk into the buffer cache every 5 minutes it was a sign of memory pressure on the server and something you needed to investigate. 
+
+Fast forward to today, where it is not uncommon for a SQL Servers to have anywhere from 48-144GB+ RAM installed in them.  These RAM values equate to 32-132GB of buffer cache size depending on the ‘max server memory’ sp_configure option setting and the amount of memory being used for the plan cache, but you probably get the point by now.  If reading 1.7GB-12GB of data every 5 minutes was bad, how bad would it have to be to read 32GB-132GB of data from disk every 5 minutes consistently? 
+Today the value 300 is ridiculously small as a threshold for when to start worrying about buffer pool pressure. 
+
+This was a solid observation – but reading it more than a decade later, the next paragraph becomes much more relevant: 
+
+Now from my own experiences as a DBA and over the past 6 months as a consultant, the I/O subsystem is one of the most undersized components in a majority of SQL Server implementations, so the last thing I want to be doing is hammering the disks in my server because I relied on a performance counter that was out of date years ago but never updated.  For the last 3-4 years I have relied on the amount of memory being used by the data cache in SQL Server to determine when Page Life Expectancy was a sign of impending problems.  This means I replaced the old 300 threshold with a more reasonable value of (DataCacheSizeInGB/4GB *300) as a basis for when to begin investigating things. 
+
+In 2011, disk subsystems had severe limitations in data transfer. This was so much the case in fact, that the first few generations of SANs threw spindles at the problem to try to mitigate the issue. Ever larger RAM caches were installed in front of the spindles to speed up effective transfers, and then in the twenty-teens we started to see some real leaps in storage tech, with fiber channel , multi-path controllers, and solid state storage devices. Today, transferring that 132gb quoted above is trivial. Sitting at my desk, using a mid-range laptop, Skyrim - one of the best games ever, but famed at release for the expanse of its loading screens - is literally 2 seconds from click to render. Even that pales to the out-of-support Dell PowerEdge 720 sitting behind me running my home domain, FPS, game servers, and complete lab, which starts its VMs in under 10 seconds after a power failure. 
+
+	2. PLE is an incrementing counter at a value of 1 per real world second and flushes when a large enough memory cycle happens
+	3. PLE is reactionary and doesn't tell you WHY something happened to cause it to drop
+	4. PLE is useless when SQL starts up because data is being loaded into RAM, in bulk, for some undefined period of time
+
+ If you're old enough, you've probably seen a sign like this one, whether in real life or in popular culture: 
+
+Ow! My premiums! 
+
+This is used frequently in industrial areas where safety is important/legislated/bargained or is otherwise considered important. It's simply an incrementing counter at a value of 1 per day, resetting when something unfortunate happens. It doesn't tell you WHY something happened and it's effectively useless when it gets reset, because any improvements that were made in response to the resetting event haven't had an opportunity to be quantified. It does, in fact, fulfill all three reasons PLE was removed from sp_BlitzFirst – but does that mean the sign is also useless?
+ 
+Not necessarily. 
+
+The picture allows you to look at it graphically and understand the point of the number, which is not to tell you why, but to tell you WHEN. PLE, like the sign, indicates status - in the case of the latter, the status of implemented safety protocols, and in the former, or memory stability. The number on the sign serves the exact same purpose as recording when a PLE crash happened: it tells you when a problem happened. Consider a popular iteration of the sign above: 
+
+
+I have, in fact, been responsible for two such signs being updated. 
+
+Just by adding a second field to the sign, we now can compare values. If it's been 48 days since a time-lost accident, and the record is 60 days, that tells a completely different story than if it's been 48 days since an accident, but the record is 600 days. The former implies that another accident is imminent, while the latter implies that the most recent accident was unusual. The ability to reference past status is what makes the counter valuable—not any single point-in-time value. 
+
+The company HR is going to have a document of some kind that tracks accidents, providing a (near) complete history of their frequency. Based on the frequency, an informed evaluation of whether the environment needs to be changed can be made. That is the key piece of information that is missing - a PLE of 5 at a point in time is utterly meaningless. But a historical record showing that PLE drops to 5 every day at 1am is useful. A historical record showing that PLE drops to 5 every day at 1am, but is over 1,000 at all other times, is amazing. 
+
+At this point in history, everything in IT is finite, from the budget to the available labor. Virtually no company has all the staff they need to meet all their IT requirements (much less desires), so what resources they have need to be parceled out as needed. When circumstances dictate that the available IT resources are insufficient, people like Brent get called in; to that end, he has some fantastic tools, many of which he's made available to the greater community, and all of which are designed to provide status and, where possible, history. 
+
+PLE isn't stored historically by either Windows or SQL, so it absolutely makes sense that he'd remove it from his tools. As shown above, one data point won't do much for you. But what about a historical record of status? If I know that the server only has a PLE issue for 20 minutes at 1am daily, I can make an informed decision to completely ignore it as not an issue because the tasks delegated for that time frame are completed in the desired time frame. Conversely, if PLE crashes for 20 minutes daily at 1pm and it’s generating user complaints, I know to be on the box at that time to see who is doing what. That historical record of status can be absolutely key in allocating your limited IT resources - and long-term, it can also tell a story about the memory load on that server: is it stable? Getting better? Can it handle that new app the Finance department wants to host? What's the status this week as compared to last week, before we rolled out the last batch of changes? 
+
+	5. With the expansion of system architecture over the past 20 years, multiple NUMA nodes means values are being averaged out and so may hide real problems in specific nodes
+	
+ This is both true and misleading. The key piece of information in the article is - in my opinion - that it was written in 2011, before the advent of hypervisors that could handle RDBMS. I believe this concern is dated and more niche in modern virtualized environments, but to make that case,  we need to understand NUMA nodes. 
+
+NUMA stands for non-uniform memory access, and that doesn't help 99% of people trying to figure out what it means to them, so here's an image of a 2-socket motherboard: 
+
+
+Never cheap out on your RAM, kids. 
+
+The CPU sockets are the yellow squares on the right half of the board. On either side of those, you can see 4 blue RAM slots. Handily enough, this is a server motherboard, so these things will be true: 
+
+	• There are direct physical connections from the CPU socket to the RAM slots on either side of it
+	• There are direct physical connections between the two CPU sockets
+	• There are NOT direct physical connections between the top CPU socket to the RAM slots next to the bottom socket
+	• There are NOT direct physical connections between the bottom CPU socket and the RAM slots next to the top socket
+
+ If a CPU needs to work with data on those RAM sticks, it has the fastest, most direct route to that data (uniform memory access). BUT, if the CPU needs to work with data on the RAM sticks to either side of the other CPU socket, it must go through that CPU to do it, which means things are going to go slower (non-uniform memory access). Each socket and the RAM slots physically connected to it are a NUMA node.  NUMA nodes and their proper understanding can play a HUGE role in the success of your environment, so I do recommend further research into it, paying special attention to hypervisor documentation to understand how physical and virtual NUMA configurations work. 
+
+As mentioned, Paul's article references a point-in-time before hypervisors were suitable for SQL Server, as well as being more specifically relevant to large systems with multiple NUMA nodes. The former is easy to grasp, but the latter gets into an issue I often have with white papers in general: the over-reliance on outliers. There were, are, and will be large, expensive and expansive servers hosting SQL - but those were not the norm in 2011. Far more common were (physical) machines configured to run a specific, limited backend for an application. Servers with 8 sockets and 32-RAM slot systems, while certainly available in 2011, were generally not the purview of SQL server, because SQL was still struggling to be considered an Enterprise-level RDBMS solution (and frankly, in some areas it still struggles with this). Much more common were 2-socket servers procured for single use cases, whether application, department, or even entire small companies. Thus, even at the time, while it would have been possible for the concern over NUMA-nodes averaging out PLE values, it would not have been likely for most SQL DBAs to run into it - and by the time it would be probable, hypervisors had matured and were being exploited far and wide to carve large, single, physical servers into many, small, virtual ones. Even in environments where large physical servers make sense, leveraging a hypervisor for a single large VM is often preferred for ease of system redundancy. 
+
+All this matters because when you're pulling PLE, you’ll more often be pulling it from a single node baked into your VM, rather than an aggregate form several nodes– ESX, for example, will, by design, not expose vNUMA at all if your VM will fit into a single physical NUMA node. This can result in misleading values—but even a misleading PLE value can be meaningful when viewed through the lens of historical trends. 
+
+Ultimately, this may seem like a lot of words about a trivial performance counter - but perhaps it’s healthy to review positions from respected experts using a different perspective. Too often, we all take something as gospel just because someone notable wrote it - but just because something is inappropriate in one use case doesn't mean it’s worth disregarding entirely. PLE may be old, but it still has value, not just for a raw number, but for the opportunity for comparison. 
+
+Whether you’re someone who still finds value in PLE, or you’re someone who has discarded it entirely, I’d love to hear how you’re tracking memory pressure in your environment. Let’s compare notes. 
+
+From <https://www.linkedin.com/pulse/old-necessarily-busted-dave-parsons-p3rke/?trackingId=myF8Q172QUAUfe6vDlzNKA%3D%3D> 
