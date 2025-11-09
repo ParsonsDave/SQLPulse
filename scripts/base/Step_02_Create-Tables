@@ -1,0 +1,39 @@
+/* *************************************************************************************************
+
+ALERT! ALERT! ALERT!
+
+THIS IS A WORK IN PROGRESS
+
+********************************************************************************************** */
+
+USE [SQLPulse]
+GO
+
+/****** Object:  Table [dbo].[BP_Parameters]    Script Date: 3/2/2025 3:07:07 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[BP_Parameters](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[BP_Parameter] [varchar](50) NULL,
+	[BP_Value] [varchar](50) NULL,
+	[DP_Description] [varchar](500) NULL
+) ON [PRIMARY]
+GO
+
+
+/* *************************************************************************************************
+
+ALERT! ALERT! ALERT!
+
+Below this is the results from 2025-03-02
+
+********************************************************************************************** */
+
+ID	BP_Parameter	BP_Value	DP_Description
+1	CPUCollectionInterval	240	This is the last [n] minutes to collect CPU data; it should match the run schedule for the associated agent job. The default is 240 minutes (4 hours)
+2	CleanupInterval	90	This is the cleanup interval for the data tables; the default is 90 days. The shortest should be 31-35 days to allow for the monthly rollup reports
+

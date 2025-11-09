@@ -1,0 +1,101 @@
+
+/* *************************************************************************************************
+
+Source: SQL Pulse: Create [dbo].[tblServerRestartDates]
+Build: 1.0
+Build Date: 2024-03-02
+
+This table is used by the stored procedure [dbo].[UpdateLastServerStart] to track when the SQL Server instance was last restarted.
+
+********************************************************************************************** */
+
+USE [SQLPulse]
+GO
+
+/****** Object:  Table [dbo].[tblServerRestartDates]    Script Date: 3/2/2025 3:11:00 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[tblServerRestartDates](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[RestartDate] [datetime] NULL,
+	[RunDate] [datetime] NULL
+) ON [PRIMARY]
+GO
+
+/* *************************************************************************************************
+
+NOTE!!!
+
+The stored procedure is below this block
+
+********************************************************************************************** */
+
+USE [SQLPulse]
+GO
+/****** Object:  StoredProcedure [dbo].[UpdateLastServerStart]    Script Date: 3/2/2025 2:19:13 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+ALTER PROCEDURE [dbo].[UpdateLastServerStart]
+	
+	/* *********************************************************************************
+
+	There are no input or output variables at this time
+
+	********************************************************************************* */
+	
+
+AS
+
+BEGIN
+
+/* *********************************************************************************
+
+Source: SQL Pulse: Update [dbo].[tblServerRestartDates]
+Build: 1.0
+Build Date: 2024-03-02
+
+This sproc is called by every other stored procedure on execution for the purposes of coordinating data gathering,
+eliminating duplicates, and general bookkeeping. 
+
+The code could definitely be tighter and more efficient; it is structured this way in the interests of being as human-readable as possible
+
+This sproc performs the following activities:
+
+   1) Declare the internal variables
+   2) Set the variables for processing
+   3) Insert values into [dbo].[tblServerRestartDates] with duplicate checking
+   
+********************************************************************************* */
+
+-- 1) Declare internal variables
+
+	DECLARE @SystemThreadLogin datetime
+	DECLARE @RunDate datetime
+	
+
+-- 2) Set the values for processing
+
+	SET @SystemThreadLogin = CAST((SELECT sqlserver_start_time FROM sys.dm_os_sys_info) as smalldatetime)
+	SET @RunDate = CAST(GetDate() as smalldatetime)
+
+
+-- 3) Insert values into [dbo].[tblServerRestartDates] with duplicate checking
+
+	IF NOT EXISTS (SELECT 1 FROM [dbo].[tblServerRestartDates] WHERE RestartDate = @SystemThreadLogin)
+		INSERT INTO [dbo].[tblServerRestartDates] (RestartDate, RunDate) VALUES (@SystemThreadLogin, @RunDate)
+
+
+END
+
+
+
+
+
