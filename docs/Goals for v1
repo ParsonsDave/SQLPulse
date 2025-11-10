@@ -1,0 +1,31 @@
+Gather Data:
+
+	1) CPU Utilization every minute (note: Global average only, not per-core)
+		a. CPU Utilization
+	2) Memory every 5 minutes (note: Global average only, not per-NUMA-node)
+		a. Buffer Cache Hit Ratio
+		b. Page Life Expectancy
+	3) Disk Latency (note: data per file: mdf, ndf, log)
+		a. Read/Write/Average Latency
+		b. Bytes per Read/Write/Transfer
+		c. Disk, DatabaseName, filenames (+path)
+	4) Blocking (note: gather daily and delete previous data since the last server restart)
+		a. Basic cumulative blocking per DB object
+		b. Analysis? Add cumulative times between restarts at check period
+		c. Analysis? Perhaps both expression of absolute time and relative % of processing time?
+	5) Deadlocks?
+		a. This is iffy…first, do I want to track them at all? If so, just number, or more data?
+	6) Wait States
+		a. No, start with basics, perhaps just the top 10 at a time, and clear the DMV after gathering data. Later, pull it together, compare it to total processing time available, and provide basic ratings and recommendations on the data
+		b. https://www.sqlskills.com/blogs/paul/wait-statistics-or-please-tell-me-where-it-hurts/
+		c. https://www.sqlskills.com/help/waits/
+		d. https://www.brentozar.com/sql/wait-stats/
+		e. https://www.sqlshack.com/boost-sql-server-performance-with-wait-statistics/
+		f. Legacy links below
+		g. https://www.mssqltips.com/sqlservertip/1949/sql-server-sysdmoswaitstats-dmv-queries/
+		h. Remember that this DMV can be cleared on-demand:
+		i. https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-wait-stats-transact-sql?view=sql-server-ver16
+		j. Added 2024-06-04: https://sqlperformance.com/2020/01/sql-performance/why-waits-alone-are-not-enough
+			i. The takeaway is that waits are not correlated with system resource usage. So, EoM reporting leveraging analysis of resource usage : CPU + RAM + Disk (though ram/disk can be directly related (check PLE for thrashing) is more important than waits, which should be a confirming/disproving factor than a metric in and of itself
+	7) VLF Data
+    8) Backup History?
