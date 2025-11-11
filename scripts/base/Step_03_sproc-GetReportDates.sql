@@ -29,7 +29,7 @@ The purpose of this stored procedure is to return the following values:
 This is because all reporting is done at the start of one month for the previous month;
 additionally, different metrics are gathered at different intervals, but all are minute-based
 
-This centralizes a large code block out of the reporting procedures 
+This centralizes dates out of the reporting procedures and will allow the input of custom values for reporting months, if desired 
 
 It performs the following activities:
 
