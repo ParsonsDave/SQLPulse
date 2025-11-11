@@ -26,23 +26,8 @@ BEGIN
 /* *********************************************************************************
 
 Source: SQLPulse: Get Blocking Data
-Build: 1.0
-Build Date: 2025-03-02
-
-Build note: The core data gathering for this sproc is directly from Paul Randall:
-	
-	   http://www.sqlskills.com/blogs/paul/how-to-examine-io-subsystem-latencies-from-within-sql-server/
-
-	   I wrote two different versions of this, one of which was definitely more code-efficient and worked great against systems as old as 2008 R2 - 
-	   BUT, this query is so much more human-readable that I couldn't justify either of my other queries. Being human-readable is extremely important
-	   in this project and Mr. Randall's query is great as-is. As it is his code and not mine, I wanted it documented in this procedure.
-
-This procedure will only archive information that is over a week old. Why a week? Because values can skew high at service startup, *especially* for TempDB
-Waiting a week will allow two items I consider fairly important:
-	1) Smooth out the spike(s)
-	2) Allow weekly maintenance to be included (you ARE running maintenance at LEAST weekly, right? RIGHT??)
-
-For future modification, allowing specification of collection frequency and time before data is valid (instead of the current week) would be advisable/useful/beneficial
+Build: 1.1
+Build Date: 2025-11-11
 
 This sproc performs the following activities:
 
@@ -103,6 +88,7 @@ This sproc performs the following activities:
 --6) Remove any previous stats in [dbo].[tblBlockingHistory] since the last server restart
 		-- This is because blocking stats are aggregate since the last server restart
 		-- so we only need to keep the most recent pull of the data
+		-- BurmaShave
 
 	BEGIN TRANSACTION
 		DELETE [dbo].[tblBlockingHistory] Where RunDate > @LastServerRestart
