@@ -1,7 +1,7 @@
 USE [SQLPulse]
 GO
 
-/****** Object:  StoredProcedure [dbo].[GetReportDates]    Script Date: 3/2/2025 4:34:30 PM ******/
+/****** Object:  StoredProcedure [dbo].[GetReportDates]    Script Date: 11/11/2025 3:41:30 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -17,9 +17,9 @@ BEGIN
 
 /* ****************************************************************************************************
 
-Source: SQL Pulse: Get Report Dates
-Build: 1.1
-Build Date: 2025-03-02
+Source: Dave's Basic Monitoring Protocol: Get Report Dates
+Build: 2.1
+Build Date: 2025-11-11
 
 The purpose of this stored procedure is to return the following values:
 	1) Start of month (ex: 2025-01-01)
@@ -35,51 +35,29 @@ It performs the following activities:
 
    1) Set NOCOUNT ON to prevent extra result sets from interfering with SELECT statements
    2) Declare the internal variables and values
-   3) Calculate the ouputs
+   3) Calculate the outputs
    
 **************************************************************************************************** */
 
 	-- 1) Set NOCOUNT ON to prevent extra result sets from interfering with SELECT statements
-		
+			
 		SET NOCOUNT ON;
-
-
-    -- 2) Declare the internal variables and values
 		
-		Declare @StartDate date
-		Declare @EndDate date
-		Declare @ReportMonth int = (select month(DATEADD(month, -1, Getdate())))
-		Declare @YearInQuestion varchar(4)
-		Declare @IsLeapYear int = dbo.fn_IsLeapYear(Year(GetDate()))
+	-- 2) Declare the internal variables and values
+			
+		-- This section intentionally blank for future expansion
 		
-		Declare @WorkingDays int = 0
-
-			If @ReportMonth = 1  Set @WorkingDays = 31
-			If @ReportMonth = 3  Set @WorkingDays = 31
-			If @ReportMonth = 5  Set @WorkingDays = 31
-			If @ReportMonth = 7  Set @WorkingDays = 31
-			If @ReportMonth = 8  Set @WorkingDays = 31
-			If @ReportMonth = 10  Set @WorkingDays = 31
-			If @ReportMonth = 12  Set @WorkingDays = 31
-	
-			If @ReportMonth = 4  Set @WorkingDays = 30
-			If @ReportMonth = 6  Set @WorkingDays = 30
-			If @ReportMonth = 9  Set @WorkingDays = 30
-			If @ReportMonth = 11  Set @WorkingDays = 30
-
-			If @ReportMonth = 2 AND @IsLeapYear = 1 Set @WorkingDays = 29
-			If @ReportMonth = 2 AND @IsLeapYear = 0 Set @WorkingDays = 28
-
-		If @ReportMonth = 12 Set @YearInQuestion = CAST(Year(GetDate()) - 1 as varchar(4)) Else Set @YearInQuestion = CAST(Year(GetDate()) as varchar(4))
-
-		Set @StartDate = @YearInQuestion + '-' + CAST(@ReportMonth as varchar(2)) + '-01'
-		Set @EndDate = @YearInQuestion + '-' + CAST(@ReportMonth as varchar(2)) + '-' + CAST(@WorkingDays as varchar(2))
-	
-	-- 3) Calculate the ouputs
-
-		Set @TotalMinutes = @WorkingDays * 1440
-		Set @StartofMonth = CAST(@StartDate as date)
-		Set @EndofMonth = CAST(@EndDate as date)
+	-- 3) Calculate the output
+		
+		-- Step 1: Calculate the last day of the previous month (EndofMonth)
+			SET @EndofMonth = DATEADD(day, -1, DATEADD(month, DATEDIFF(month, 0, GetDate()), 0));
+			
+		-- Step 2: Calculate the first day of the previous month (StartofMonth)
+			SET @StartofMonth = DATEADD(month, DATEDIFF(month, 0, @EndofMonth), 0);
+			
+		-- Step 3: Calculate the total minutes in the period 
+			SET @TotalMinutes = DATEDIFF(MINUTE, @StartofMonth, DATEADD(day, 1, @EndofMonth));
+		
 
 END
 GO
