@@ -17,7 +17,7 @@ BEGIN
 
 /* ****************************************************************************************************
 
-Source: Dave's Basic Monitoring Protocol: Get Report Dates
+Source: SQL Pulse: Get Report Dates
 Build: 2.1
 Build Date: 2025-11-11
 
