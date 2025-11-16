@@ -1,0 +1,28 @@
+USE [SQLPulse]
+GO
+
+/****** Object:  Table [dbo].[DiskInformation]    Script Date: 11/16/2025 11:40:35 AM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[DiskInformation](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[EventTime] [datetime] NOT NULL,
+	[DriveLetterOrMountPath] [nvarchar](255) NULL,
+	[Label] [nvarchar](255) NULL,
+	[SizeKB] [bigint] NULL,
+	[FreeSpaceKB] [bigint] NULL,
+	[UsedSpaceKB] [bigint] NULL,
+	[PercentFree] [decimal](5, 2) NULL,
+	[PercentUsed] [decimal](5, 2) NULL,
+	[DriveType] [nvarchar](50) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
