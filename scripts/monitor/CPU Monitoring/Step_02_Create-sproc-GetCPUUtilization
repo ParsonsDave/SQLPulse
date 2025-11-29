@@ -92,10 +92,10 @@ It performs the following activities:
 -- 5) Insert non-duplicate values into the main table
 	-- Duplicates are evaluated on the MINUTE by a CAST to smalldatetime, which sets all seconds & fractions thereof to 0
 
-	INSERT INTO [DBA].[dbo].[tblCPUUsage] (EventTime, SqlService, IdleProcess, NonSqlProcess)
+	INSERT INTO [dbo].[tblCPUUsage] (EventTime, SqlService, IdleProcess, NonSqlProcess)
 	SELECT EventTime, SqlService, IdleProcess, NonSqlProcess
 	FROM #tempCPUUsage t
-	WHERE NOT EXISTS (SELECT 1 FROM [DBA].[dbo].[tblCPUUsage] d
+	WHERE NOT EXISTS (SELECT 1 FROM [dbo].[tblCPUUsage] d
 	WHERE (CAST(EventTime AS smalldatetime) = CAST(t.EventTime AS smalldatetime)));
 
 

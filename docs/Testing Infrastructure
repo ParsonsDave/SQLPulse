@@ -1,0 +1,34 @@
+/* ***************************************************************************************************************************
+
+v1.0 - 2025-11-29
+
+With the final 3 initial data gathering modules in progress, I decided it was necessary to formalize how the testing
+infrastrucutre is designed and how load testing is done.
+
+Basic development and testing has been and will continue to be done on a SQL Server 2012 using a case-sensitive collation
+    [Latin1_General_BIN] initially; perhaps others later
+
+The data sets to be used will depend on version of SQL server:
+
+    AdventureWorks: 2012, 2014, 2016 ; at time of writing, I am planning to swap to WWI at or after SQL 2016
+    Stack Overflow: 2012+ (larger data set)
+    World Wide Importers: 2016+
+
+As mentioned, the initial setup is SQL Server 2012, which is running on an RTM installation of Windows Server 2012 R2
+    Note: There is a single patch installed: 2018-05 Security Only Quality Update for Windows Server 2012 R2 for x64-based Systems (KB4103715)
+        This is to allow RDP into the box from newer versions of Windows
+
+The hardware specifications:
+    vCPU:   2
+    RAM:    8gb
+    Disks:  C = 128gb
+            D = 50gb
+            M = 2gb [This is the mount point for non-lettered LUNs]
+
+Instance-Specific Disks are allocated based on my old infrastructure documentation from 2013. All SQL disks are mount points to be able to evaluate
+disk space data gathering for non-lettered disks
+
+Once I'm satisfied that the first version of Pulse is ready for release, I'll deploy a complete running infrastructure to validate 
+as many variants of Windows/SQL as possible.
+
+*************************************************************************************************************************** */

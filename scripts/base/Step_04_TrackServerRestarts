@@ -2,10 +2,18 @@
 /* *************************************************************************************************
 
 Source: SQL Pulse: Create [dbo].[tblServerRestartDates]
-Build: 1.0
-Build Date: 2024-03-02
+Build: 1.1
+Build Date: 2025-11-29
+
+This script creates both the table and stroed procedure used to track SQL restart dates. 
 
 This table is used by the stored procedure [dbo].[UpdateLastServerStart] to track when the SQL Server instance was last restarted.
+
+NOTE: This may need to be folded up into Step 02 with the global tables. This is a decision for future me.
+
+NOTE 2: Both the table and sproc are called 'ServerRestart' , but the actual data being collected is the last start time
+of the database engine. I'm calling this out here as future expansions may benefit from these being renamed to be more specific
+to SQL, as such expansions may inlude the OS, whch might be hosting multiple SQL instances. Again, this is for future me to decide.
 
 ********************************************************************************************** */
 
@@ -43,7 +51,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-ALTER PROCEDURE [dbo].[UpdateLastServerStart]
+CREATE PROCEDURE [dbo].[UpdateLastServerStart]
 	
 	/* *********************************************************************************
 

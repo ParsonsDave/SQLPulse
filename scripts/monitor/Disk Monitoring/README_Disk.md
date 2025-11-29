@@ -15,7 +15,7 @@ Also in v2, examine how mount point files report into sys.dm_io_virtual_file_sta
 
 Theorycrafting:
 
-Traditionally, read should be <= 10ms and writes should be <=20ms. In my experience, this ideal holds up pretty well even today. However, in practical terms, the counters from sys.dm_io_virtual_file_stats are averaged out and can be seriously skewed by huge latency bursts - to the point where I've seen counters reports at 6 SECONDS when sample over a month (specifically, when the server has been continuously up a full calendar month or longer) , even though the busy period was 1-2 hours per night. To get around this, I generally consider values double the ideal (10ms read/20ms write) as functionally acceptable, so long as work is being completed in a timely fashion - this also applies to all-flash storage systems. Roughly speaking, I ballpark latency as such:
+Traditionally, read should be <= 10ms and writes should be <=20ms. In my experience, this ideal holds up pretty well even today. However, in practical terms, the counters from sys.dm_io_virtual_file_stats are averaged out and can be seriously skewed by huge latency bursts - to the point where I've seen counters report at 6 SECONDS when sample over a month (specifically, when the server has been continuously up a full calendar month or longer) , even though the busy period was 1-2 hours per night. To get around this, I generally consider values double the ideal (10ms read/20ms write) as functionally acceptable, so long as work is being completed in a timely fashion - this also applies to all-flash storage systems. Roughly speaking, I ballpark latency as such:
 
 1x ideal = 'no significant disk latency'
 2x ideal = 'possibly latency, will monitor'
