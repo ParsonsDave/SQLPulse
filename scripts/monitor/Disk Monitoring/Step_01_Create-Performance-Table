@@ -1,7 +1,16 @@
+/* ****************************************************************************************************
+
+Source: SQL Pulse: Create Disk Latency Table
+Build: 2.0
+Build Date: 2025-11-29
+
+The purpose of this script is to create the table that tracks the disk latency data. 
+
+**************************************************************************************************** */
+
 USE [SQLPulse]
 GO
 
-/****** Object:  Table [dbo].[tblDiskLatency]    Script Date: 3/2/2025 1:51:33 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -13,10 +22,8 @@ CREATE TABLE [dbo].[tblDiskLatency](
 	[EventTime] [datetime] NULL,
 	[ReadLatency] [int] NULL,
 	[WriteLatency] [int] NULL,
-	[Latency] [int] NULL,
-	[AvgBPerRead] [int] NULL,
-	[AvgBPerWrite] [int] NULL,
-	[AvgBPerTransfer] [int] NULL,
+	[AvgLatency] [int] NULL,
+	[AvgKBsPerTransfer] [int] NULL,
 	[Drive] [nvarchar](10) NULL,
 	[DatabaseName] [nvarchar](255) NULL,
 	[PhysicalName] [nvarchar](2000) NULL

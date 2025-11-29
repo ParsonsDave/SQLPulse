@@ -26,23 +26,21 @@ BEGIN
 /* *********************************************************************************
 
 Source: SQLPulse: Get Disk Latency
-Build: 1.0
-Build Date: 2025-03-02
+Build: 2.0
+Build Date: 2025-11-29
 
-Build note: The core data gathering for this sproc is directly from Paul Randall:
-	
-	   http://www.sqlskills.com/blogs/paul/how-to-examine-io-subsystem-latencies-from-within-sql-server/
+This query is based on a Microsoft Learn article: 
 
-	   I wrote two different versions of this, one of which was definately more code-efficient and worked great against systems as old as 2008 R2 - 
-	   BUT, this query is so much more human-readable that I couldn't justify either of my other queries. Being human-readable is extremely important
-	   in this project and Mr. Randall's query is great as-is. As it is his code and not mine, I wanted it documented in this procedure.
+	https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/troubleshoot-sql-io-performance
+
+This replaces the original query I was using from Paul Randall, because that's his code and not mine. 
 
 This procedure will only archive information that is over a week old. Why a week? Because values can skew high at service startup, *especially* for TempDB
 Waiting a week will allow two items I consider fairly important:
 	1) Smooth out the spike(s)
 	2) Allow weekly maintenance to be included (you ARE running maintenance at LEAST weekly, right? RIGHT??)
 
-For future modification, allowing specification of collection frequency and time before data is valid (instead of the current week) would be advisable/useful/beneficial
+For future modification, allowing specification of collection frequency and time before data is valid (instead of the current week) is advisable
 
 This sproc performs the following activities:
 
@@ -76,10 +74,8 @@ This sproc performs the following activities:
 		[EventTime] [datetime] NULL,
 		[ReadLatency] [int] NULL,
 		[WriteLatency] [int] NULL,
-		[Latency] [int] NULL,
-		[AvgBPerRead] [int] NULL,
-		[AvgBPerWrite] [int] NULL,
-		[AvgBPerTransfer] [int] NULL,
+		[AvgLatency] [int] NULL,
+		[AvgKBsPerTransfer] [int] NULL,
 		[Drive] nvarchar(10),
 		[DatabaseName] nvarchar(255) NULL,
 		[PhysicalName] nvarchar(2000) NULL
@@ -91,53 +87,42 @@ This sproc performs the following activities:
 	INSERT INTO #tempDiskLatency
 
 	SELECT
-		GETDATE() AS [EventTime],
-		[ReadLatency] =
-			CASE WHEN [num_of_reads] = 0
-				THEN 0 ELSE ([io_stall_read_ms] / [num_of_reads]) END,
-		[WriteLatency] =
-			CASE WHEN [num_of_writes] = 0
-				THEN 0 ELSE ([io_stall_write_ms] / [num_of_writes]) END,
-		[Latency] =
-			CASE WHEN ([num_of_reads] = 0 AND [num_of_writes] = 0)
-				THEN 0 ELSE ([io_stall] / ([num_of_reads] + [num_of_writes])) END,
-		[AvgBPerRead] =
-			CASE WHEN [num_of_reads] = 0
-				THEN 0 ELSE ([num_of_bytes_read] / [num_of_reads]) END,
-		[AvgBPerWrite] =
-			CASE WHEN [num_of_writes] = 0
-				THEN 0 ELSE ([num_of_bytes_written] / [num_of_writes]) END,
-		[AvgBPerTransfer] =
-			CASE WHEN ([num_of_reads] = 0 AND [num_of_writes] = 0)
-				THEN 0 ELSE
-					(([num_of_bytes_read] + [num_of_bytes_written]) /
-					([num_of_reads] + [num_of_writes])) END,
-		LEFT ([mf].[physical_name], 2) AS [Drive],
-		DB_NAME ([vfs].[database_id]) AS [DatabaseName],
-		[mf].[physical_name]
-	FROM
-		sys.dm_io_virtual_file_stats (NULL,NULL) AS [vfs]
-		JOIN sys.master_files AS [mf]
-	ON [vfs].[database_id] = [mf].[database_id]
-		AND [vfs].[file_id] = [mf].[file_id]
-	-- WHERE [vfs].[file_id] = 2 -- log files
-	 ORDER BY [Latency] DESC
-	--ORDER BY [ReadLatency] DESC
-	--ORDER BY [WriteLatency] DESC;
+		@EventTime,
+		 ReadLatency = CASE WHEN vfs.num_of_reads = 0 
+                           THEN 0 ELSE (vfs.io_stall_read_ms / vfs.num_of_reads) END,
+        WriteLatency = CASE WHEN vfs.num_of_writes = 0 
+                            THEN 0 ELSE (vfs.io_stall_write_ms / vfs.num_of_writes) END,
+        AvgLatency = CASE WHEN (vfs.num_of_reads = 0 AND vfs.num_of_writes = 0) 
+                          THEN 0 ELSE (vfs.io_stall / (vfs.num_of_reads + vfs.num_of_writes)) END,
+        AvgKBsPerTransfer = CASE WHEN (vfs.num_of_reads = 0 AND vfs.num_of_writes = 0) 
+                                 THEN 0 ELSE (((vfs.num_of_bytes_read + vfs.num_of_bytes_written) 
+                                               / (vfs.num_of_reads + vfs.num_of_writes)) / 1024) END,
+        LEFT(mf.physical_name, 2) AS [Drive],
+        DB_NAME(vfs.database_id) AS [DatabaseName],
+        mf.physical_name
+    FROM sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
+    JOIN sys.master_files AS mf
+      ON vfs.database_id = mf.database_id
+     AND vfs.file_id = mf.file_id
+    ORDER BY AvgLatency DESC;
+	
 
 
 -- 5) Insert the data into the archive table if it is more than a week since the server restart
 		-- The code to prevent duplicates is present despite not being needed
 		-- As noted previously, this is where a variable would be used to adjust the monitor period
 
-	If ABS((DATEDIFF (day, @EventTime, @LastRestart ))) >=7 
-
-		INSERT INTO [DBA].[dbo].[tblDiskLatency] (EventTime, ReadLatency, WriteLatency, Latency, AvgBPerRead, AvgBPerWrite, AvgBPerTransfer, Drive, DatabaseName, PhysicalName)
-		SELECT EventTime, ReadLatency, WriteLatency, Latency, AvgBPerRead, AvgBPerWrite, AvgBPerTransfer, Drive, DatabaseName, PhysicalName
-		FROM #tempDiskLatency t
-		WHERE NOT EXISTS (SELECT 1 FROM [DBA].[dbo].[tblDiskLatency] d
-		WHERE (CAST(EventTime AS smalldatetime) = CAST(t.EventTime AS smalldatetime)));
-
+	IF ABS((DATEDIFF (day, @EventTime, @LastRestart ))) >=7 
+	BEGIN
+        INSERT INTO [dbo].[tblDiskLatency]
+            (EventTime, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName)
+        SELECT EventTime, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName
+        FROM #tempDiskLatency t
+        WHERE NOT EXISTS (
+            SELECT 1 FROM [dbo].[tblDiskLatency] d
+            WHERE CAST(d.EventTime AS smalldatetime) = CAST(t.EventTime AS smalldatetime)
+        );
+    END
 
 --6) Debug Line if you pull this out of the sproc and into a normal query
 
@@ -147,7 +132,7 @@ This sproc performs the following activities:
 	
 -- 7) Object cleanup
 
-	drop table #tempDiskLatency
+	DROP TABLE #tempDiskLatency
 
 
 END

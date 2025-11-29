@@ -1,6 +1,17 @@
 /* *************************************************************************************************
 
-ALERT! ALERT! ALERT!
+Source: SQL Pulse: Create Global Tables
+Build: 1.1
+Build Date: 2025-11-29
+
+This script is designed to build tables that will always be used by the app, no matter which modules
+are installed. 
+
+The list of tables and their usage:
+
+- BP_Parameters: This table holds global parameters for the application. 
+  Examples include data collection intervals, cleanup intervals, and other settings that affect
+  the overall operation of SQL Pulse.
 
 THIS IS A WORK IN PROGRESS
 
@@ -27,13 +38,10 @@ GO
 
 /* *************************************************************************************************
 
-ALERT! ALERT! ALERT!
-
-Below this is the results from 2025-03-02
-
-********************************************************************************************** */
+BP_Parameters Examples
 
 ID	BP_Parameter	BP_Value	DP_Description
 1	CPUCollectionInterval	240	This is the last [n] minutes to collect CPU data; it should match the run schedule for the associated agent job. The default is 240 minutes (4 hours)
 2	CleanupInterval	90	This is the cleanup interval for the data tables; the default is 90 days. The shortest should be 31-35 days to allow for the monthly rollup reports
 
+********************************************************************************************** */
