@@ -1,0 +1,29 @@
+USE [SQLPulse]
+GO
+
+-- Insert values into the Modules table
+
+	INSERT INTO dbo.Modules (ModuleName, ModuleVersion, ModuleDescription, IsEnabled)
+	VALUES 
+		('CPU', 1.2, 'Monitors CPU usage of SQL Server and other processes', 1)
+
+-- Insert values into the ModuleActions table to cover what the module can do
+
+	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
+	VALUES 
+		((SELECT ID FROM dbo.Modules WHERE ModuleName = 'CPU'), 'CollectData', 'Module_CPU_CollectData', 1, 1, 'Collects CPU Utilization data from the SQL Server instance')
+
+
+
+-- Create the data table(s)
+
+	CREATE TABLE [dbo].[CPU_Data](
+		[ID] [int] IDENTITY(1,1) NOT NULL,
+		[EventTime] [datetime] NULL,
+		[SqlService] [int] NULL,
+		[IdleProcess] [int] NULL,
+		[NonSqlProcess] [int] NULL
+	) ON [PRIMARY]
+	GO
+
+-- 

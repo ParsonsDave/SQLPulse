@@ -1,15 +1,7 @@
 USE [SQLPulse]
 GO
 
-/****** Object:  StoredProcedure [dbo].[GetCPUUtilization]    Script Date: 3/2/2025 10:18:36 AM ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
-
-CREATE PROCEDURE [dbo].[GetCPUUtilization]
+CREATE PROCEDURE [dbo].[Module_CPU_CollectData]
 	
 	/* *********************************************************************************
 
@@ -25,8 +17,8 @@ BEGIN
 /* *********************************************************************************
 
 Source: SQLPulse: Get CPU Utilization
-Build: 1.1
-Build Date: 2025-03-02
+Build: 1.2
+Build Date: 2026-01-10
 
 This sproc gathers and records data for CPU utilization
 NOTE: This is an average CPU counter and does not gather granular data on individual cores
@@ -72,7 +64,7 @@ It performs the following activities:
 
 	INSERT INTO #tempCPUUsage
 
-	SELECT  DATEADD(ms, -1 * ( @Now - [timestamp] ), GETDATE()) AS EventTime,
+	SELECT  DATEADD(ms, -1 * ( @Now - [timestamp] ), SYSUTCDATETIME()) AS EventTime,
 	        SQLService, 
 	        Idle,
 	        100 - Idle - SQLService AS NonSqlProcesses
@@ -92,10 +84,10 @@ It performs the following activities:
 -- 5) Insert non-duplicate values into the main table
 	-- Duplicates are evaluated on the MINUTE by a CAST to smalldatetime, which sets all seconds & fractions thereof to 0
 
-	INSERT INTO [dbo].[tblCPUUsage] (EventTime, SqlService, IdleProcess, NonSqlProcess)
+	INSERT INTO [dbo].[CPU_Data] (EventTime, SqlService, IdleProcess, NonSqlProcess)
 	SELECT EventTime, SqlService, IdleProcess, NonSqlProcess
 	FROM #tempCPUUsage t
-	WHERE NOT EXISTS (SELECT 1 FROM [dbo].[tblCPUUsage] d
+	WHERE NOT EXISTS (SELECT 1 FROM [dbo].[CPU_Data] d
 	WHERE (CAST(EventTime AS smalldatetime) = CAST(t.EventTime AS smalldatetime)));
 
 

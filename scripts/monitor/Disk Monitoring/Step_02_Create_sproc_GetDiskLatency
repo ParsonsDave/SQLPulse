@@ -1,16 +1,7 @@
 USE [SQLPulse]
 GO
 
-/****** Object:  StoredProcedure [dbo].[GetDiskLatency]    Script Date: 3/2/2025 1:50:22 PM ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
-
-
-CREATE PROCEDURE [dbo].[GetDiskLatency]
+CREATE PROCEDURE [dbo].[Module_Disk_CollectLatency]
 	
 	/* *********************************************************************************
 
@@ -26,21 +17,15 @@ BEGIN
 /* *********************************************************************************
 
 Source: SQLPulse: Get Disk Latency
-Build: 2.0
-Build Date: 2025-11-29
+Build: 2.1
+Build Date: 2026-01-10
 
 This query is based on a Microsoft Learn article: 
 
 	https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/troubleshoot-sql-io-performance
 
-This replaces the original query I was using from Paul Randall, because that's his code and not mine. 
-
-This procedure will only archive information that is over a week old. Why a week? Because values can skew high at service startup, *especially* for TempDB
-Waiting a week will allow two items I consider fairly important:
-	1) Smooth out the spike(s)
-	2) Allow weekly maintenance to be included (you ARE running maintenance at LEAST weekly, right? RIGHT??)
-
-For future modification, allowing specification of collection frequency and time before data is valid (instead of the current week) is advisable
+For future modification, allowing specification of collection frequency and time before data is valid may is advisable
+This would be to allow smoothing from any startup stress (for example, on [tempdb])
 
 This sproc performs the following activities:
 
@@ -63,8 +48,9 @@ This sproc performs the following activities:
 
 -- 2) Declare the internal variables
 
-	Declare @EventTime as datetime = (SELECT CAST(GetDate() AS smalldatetime))
-	Declare @LastRestart as datetime = (SELECT TOP 1 RestartDate FROM tblServerRestartDates)
+	Declare @EventTime as datetime = (SELECT CAST(SYSUTCDATETIME() AS smalldatetime))
+	Declare @LastRestart as datetime = (SELECT TOP 1 RestartDate FROM tblServerRestartDates ORDER BY RestartDate DESC)
+	Declare @PreviousDataDate as datetime = (SELECT TOP 1 EventTime FROM dbo.Disk_Latency ORDER BY EventTime DESC)
 	-- Declare @MinimumMonitorAge as int -- For future use as a user-configurable parameter
 
 
@@ -107,28 +93,31 @@ This sproc performs the following activities:
     ORDER BY AvgLatency DESC;
 	
 
+-- 5) Insert or replace data depending on whether the server has restarted
+	-- This is where @MinimumMonitorAge would/will be used in the future
 
--- 5) Insert the data into the archive table if it is more than a week since the server restart
-		-- The code to prevent duplicates is present despite not being needed
-		-- As noted previously, this is where a variable would be used to adjust the monitor period
-
-	IF ABS((DATEDIFF (day, @EventTime, @LastRestart ))) >=7 
+	IF @PreviousDataDate IS NOT NULL
 	BEGIN
-        INSERT INTO [dbo].[tblDiskLatency]
-            (EventTime, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName)
-        SELECT EventTime, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName
-        FROM #tempDiskLatency t
-        WHERE NOT EXISTS (
-            SELECT 1 FROM [dbo].[tblDiskLatency] d
-            WHERE CAST(d.EventTime AS smalldatetime) = CAST(t.EventTime AS smalldatetime)
-        );
-    END
+		IF @LastRestart <= @PreviousDataDate
+		BEGIN
+			-- Server has NOT restarted since last sample
+			-- Replace the previous sample
+			DELETE FROM dbo.Disk_Latency
+			WHERE EventTime >= @PreviousDataDate;
+		END
+	END
+
+	-- Insert the new sample
+	INSERT INTO dbo.Disk_Latency
+		(EventTime, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName)
+	SELECT EventTime, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName
+	FROM #tempDiskLatency;
 
 --6) Debug Line if you pull this out of the sproc and into a normal query
 
 	--Select * from #tempDiskLatency
 
-	--Select * From tblDiskLatency
+	--Select * From Disk_Latency
 	
 -- 7) Object cleanup
 

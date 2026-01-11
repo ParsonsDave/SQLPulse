@@ -67,8 +67,8 @@ BEGIN
 /* *********************************************************************************
 
 Source: SQL Pulse: Update [dbo].[tblServerRestartDates]
-Build: 1.0
-Build Date: 2024-03-02
+Build: 1.1
+Build Date: 2026-01-10
 
 This sproc is called by every other stored procedure on execution for the purposes of coordinating data gathering,
 eliminating duplicates, and general bookkeeping. 
@@ -92,7 +92,7 @@ This sproc performs the following activities:
 -- 2) Set the values for processing
 
 	SET @SystemThreadLogin = CAST((SELECT sqlserver_start_time FROM sys.dm_os_sys_info) as smalldatetime)
-	SET @RunDate = CAST(GetDate() as smalldatetime)
+	SET @RunDate = CAST(SYSUTCDATETIME() as smalldatetime)
 
 
 -- 3) Insert values into [dbo].[tblServerRestartDates] with duplicate checking
