@@ -1,11 +1,10 @@
 USE [msdb]
 GO
 
-/****** Object:  Job [SQLPulse - Get Disk Information]    Script Date: 11/29/2025 3:55:06 PM ******/
 BEGIN TRANSACTION
 DECLARE @ReturnCode INT
 SELECT @ReturnCode = 0
-/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 11/29/2025 3:55:06 PM ******/
+
 IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
 BEGIN
 EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
@@ -39,8 +38,9 @@ EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Powershe
 		@command=N'# CONFIGURATION SECTION
 $serverName   = "localhost"
 $databaseName = "SQLPulse"
-$tableName    = "DiskInformation"
-$eventTime = Get-Date
+$tableName    = "Disk_Information"
+$eventTime = (Get-Date -AsUTC).ToString("o")
+
 
 
 # SQL Connection Setup
