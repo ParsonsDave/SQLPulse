@@ -1,0 +1,208 @@
+CREATE PROCEDURE [Module_Waits_CollectData ]
+
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+/* *********************************************************************************
+
+Source: SQLPulse: Get WAIT Statistics
+Build: 1.0
+Build Date: 2026-01-15
+
+This sproc gathers and records SQL Wait data
+
+It performs the following activities:
+
+   1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+   2) Declare the internal variables and set their values
+   3) TRUNCATE TABLE: Waits_StatsCurrent
+   4) INSERT Wait Data into table: Waits_StatsCurrent
+   5) INSERT contents of table Waits_StatsCurrent into table Waits_StatsSnapshots
+   6) TEMPORARY - Remove the contents of table Waits_StatsSnapshots older than 90 days
+		-- This will be done in the future by the alerting sproc, based on the threshold settings
+   7) Check if the server has restarted since the most recent entry in table WaitStatsAcrhive
+		-- If not, delete the most recent data set in the table
+   8) INSERT the contents of the table Waits_StatsCurrent into table Waits_StatsArchive
+   7) Object cleanup
+
+** NOTE ** - Ensure that the AlertVersion variable is always kept up-to-date!
+	--Note 2: There is currently no AlertVersion variable; perhaps later
+
+This query doesn't currently cover Availability Groups; code needs to be added to 
+determine if this is an AG node and the waits gathered.
+
+AG Wait notes for later:
+
+Wait Type	Description	Possible Cause
+HADR_SYNC_COMMIT	Primary replica is waiting for the secondary to harden the log before committing (synchronous mode).	Network latency, slow disk on secondary, high transaction volume.
+HADR_DATABASE_FLOW_CONTROL	Flow control is throttling log send rate to avoid overwhelming the secondary.	Secondary is slow to process log blocks.
+HADR_LOGCAPTURE_WAIT	Log capture thread is idle, waiting for new log records.	Low activity or log capture delays.
+HADR_LOGSEND_QUEUE	Log send thread is waiting to send log blocks to the secondary.	Network congestion, secondary not keeping up.
+HADR_WORK_QUEUE	Worker thread is waiting for work in the AG worker pool.	Normal when idle; high values may indicate backlog.
+HADR_TRANSPORT_DBR	Waits related to database replica transport.	Network or endpoint issues.
+
+********************************************************************************* */
+
+
+-- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+
+	EXECUTE [dbo].[UpdateLastServerStart]
+
+-- 2) Declare the internal variables and set their values
+		
+		DECLARE @LastStartup datetime = (SELECT MAX(RestartDate) FROM tblServerRestartDates)
+		DECLARE @EventTime datetime = (SELECT SYSUTCDATETIME())
+	
+	-- Calculate the number of seconds since that time; Default to 1 if it's somehow 0
+		
+		DECLARE @UptimeSeconds int = DATEDIFF(second, @LastStartup, @EventTime)
+
+		IF @UptimeSeconds = 0
+			SET @UptimeSeconds = 1
+		
+	-- Get the number of processors to be able to calculate the total CPU time since restart
+	-- NOTE!! This value respects the actual limitation of SQL configuration / licensing
+	-- For example, Sql Standard is limited to 4 sockets or 24 cores, whichever is smaller,
+	-- so a system with 8 sockets, 2 cores per socket (total 16 cores) would report back with this 
+	-- query with the proper license value of 8
+		
+		DECLARE @LogicalProcessors int = (SELECT COUNT(*) FROM sys.dm_os_schedulers WHERE status = 'VISIBLE ONLINE')
+		
+		-- Alternate: this works but may have future limitations
+		-- DECLARE @LogicalProcessors int = (SELECT COUNT (*) FROM sys.dm_os_schedulers WHERE scheduler_id < 1048576 AND is_online = 1)
+	
+	-- Calculate the total number of processing seconds since the last restart, accounting for all CPUs
+	
+		DECLARE @TotalServerTimeSeconds float = (@UptimeSeconds * @LogicalProcessors)
+
+	-- Get the most recent archive entry for clearing obsolete data (Step 7)
+
+		DECLARE @LatestWaits datetime = (SELECT MAX(EventTime) FROM dbo.Waits_StatsArchive)
+
+-- 3) TRUNCATE TABLE: Waits_StatsCurrent
+
+	TRUNCATE TABLE dbo.Waits_StatsCurrent
+
+-- 4) INSERT Wait Data into table: Waits_StatsCurrent
+
+	-- NOTE!!
+	-- This needs to be tuned 
+	-- most or all of waits that would be considered 'OTHER' should be filtered out entirely
+	-- The ORDER BY clause is not necessary, but is included so the query can be easily pulled out of this sproc for manual use
+
+	INSERT INTO dbo.Waits_StatsCurrent
+	
+	SELECT 
+		@EventTime as EventTime,
+		ws.wait_type as WaitType,
+		CASE 
+			WHEN ws.wait_type IN ('SOS_SCHEDULER_YIELD','CXPACKET','CXCONSUMER','THREADPOOL') THEN 'CPU'
+			WHEN ws.wait_type IN ('RESOURCE_SEMAPHORE','MEMORY_GRANT_QUEUE') THEN 'Memory'
+			WHEN ws.wait_type LIKE 'PAGEIOLATCH%' OR ws.wait_type IN ('WRITELOG','IO_COMPLETION') THEN 'Disk'
+			WHEN ws.wait_type LIKE 'LCK_M_%' OR ws.wait_type = 'LATCH_EX' OR ws.wait_type = 'ASYNC_NETWORK_IO' THEN 'Blocking'
+			ELSE 'Other'
+		END AS Category,
+		ROUND(ws.wait_time_ms / 1000.0, 2) AS WaitSeconds,
+		ROUND((ws.wait_time_ms - ws.signal_wait_time_ms) / 1000.0, 2) AS ResourceSeconds,
+		ROUND(ws.signal_wait_time_ms / 1000.0, 2) AS SignalSeconds,
+		ROUND(((ws.wait_time_ms / 1000.0) / @TotalServerTimeSeconds * 100), 2) AS TotalWaitPct,
+		ws.waiting_tasks_count
+	FROM sys.dm_os_wait_stats AS ws
+	WHERE ws.waiting_tasks_count > 0
+
+	-- Filter out BENIGN waits (later to be in a dedicated table)
+
+	AND ws.wait_type NOT IN (
+		'SLEEP_TASK','SLEEP_SYSTEMTASK','LAZYWRITER_SLEEP','SQLTRACE_BUFFER_FLUSH',
+		'XE_DISPATCHER_WAIT','XE_TIMER_EVENT','BROKER_TO_FLUSH','BROKER_TASK_STOP',
+		'BROKER_EVENTHANDLER','FT_IFTS_SCHEDULER_IDLE_WAIT','CHECKPOINT_QUEUE',
+		'LOGMGR_QUEUE','REQUEST_FOR_DEADLOCK_SEARCH','WAITFOR','WAITFOR_TASKSHUTDOWN',
+		'HADR_FILESTREAM_IOMGR_IOCOMPLETION','HADR_TIMER_TASK','HADR_WORK_QUEUE',
+		'DIRTY_PAGE_POLL','SOS_WORK_DISPATCHER','CXCONSUMER','BROKER_RECEIVE_WAITFOR',
+		'BROKER_TRANSMITTER','DISPATCHER_QUEUE_SEMAPHORE','FT_IFTSHC_MUTEX',
+		'XE_DISPATCHER_JOIN','LATCH_SH','LATCH_UP','LATCH_NL','REPL_SCHEMA_ACCESS',
+		'REPL_HISTORYCACHE_ACCESS','REPL_CACHE_ACCESS','REPL_TRANSPORT','CLR_AUTO_EVENT',
+		'CLR_MANUAL_EVENT','CLR_SEMAPHORE','LOGMGR_RESERVE_APPEND','LOGMGR_FLUSH',
+		'TRACEWRITE','WAIT_XTP_HOST_WAIT','WAIT_XTP_OFFLINE_CKPT_NEW_LOG',
+		'WAIT_XTP_CKPT_CLOSE'
+		)
+
+	ORDER BY Category, TotalWaitPct DESC;
+
+	-- SELECT * FROM dbo.Waits_StatsCurrent
+
+
+-- 5) INSERT contents of table Waits_StatsCurrent into table Waits_StatsSnapshots
+
+	INSERT INTO dbo.Waits_StatsSnapshots (
+		  EventTime
+		, WaitType
+		, Category
+		, WaitSeconds
+		, ResourceSeconds
+		, SignalSeconds
+		, TotalWaitPct
+		, WaitingTasksCount
+	)
+	SELECT 
+		  EventTime
+		, WaitType
+		, Category
+		, WaitSeconds
+		, ResourceSeconds
+		, SignalSeconds
+		, TotalWaitPct
+		, WaitingTasksCount
+	FROM dbo.Waits_StatsCurrent;
+
+
+-- 6) TEMPORARY - Remove the contents of table Waits_StatsSnapshots older than 90 days
+		-- This will be done in the future by the alerting sproc, based on the threshold settings
+	
+	DELETE dbo.Waits_StatsSnapshots WHERE EventTime < DATEADD(DAY, -90, SYSUTCDATETIME())
+
+
+-- 7) Check if the server has restarted since the most recent entry in table WaitStatsAcrhive
+		-- If not, delete the most recent data set in the table
+
+		IF (@LatestWaits IS NOT NULL AND @LatestWaits > @LastStartup)
+		BEGIN
+			DELETE dbo.Waits_StatsArchive WHERE EventTime = @LatestWaits
+		END
+
+
+-- 8) INSERT the contents of the table Waits_StatsCurrent into table Waits_StatsArchive
+
+	INSERT INTO dbo.Waits_StatsArchive (
+		  EventTime
+		, WaitType
+		, Category
+		, WaitSeconds
+		, ResourceSeconds
+		, SignalSeconds
+		, TotalWaitPct
+		, WaitingTasksCount
+	)
+	SELECT 
+		  EventTime
+		, WaitType
+		, Category
+		, WaitSeconds
+		, ResourceSeconds
+		, SignalSeconds
+		, TotalWaitPct
+		, WaitingTasksCount
+	FROM dbo.Waits_StatsCurrent;
+
+
+-- 9) Cleanup
+
+	-- This space intentionally blank
+
+
+
+END
+GO

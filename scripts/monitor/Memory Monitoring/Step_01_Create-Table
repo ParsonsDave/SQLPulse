@@ -1,12 +1,17 @@
 USE [SQLPulse]
 GO
 
-/****** Object:  Table [dbo].[tblMemoryCounters]    Script Date: 3/2/2025 11:35:57 AM ******/
-SET ANSI_NULLS ON
-GO
+-- Insert values into the Modules table
 
-SET QUOTED_IDENTIFIER ON
-GO
+	INSERT INTO dbo.Modules (ModuleName, ModuleVersion, ModuleDescription, IsEnabled)
+		VALUES ('Memory', 1.1, 'Gathers and records data for memory utilization', 1)
+
+-- Insert values into the ModuleActions table to cover what the module can do
+
+	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
+		VALUES ((SELECT ID FROM dbo.Modules WHERE ModuleName = 'Memory'), 'CollectData', 'Module_Memory_CollectData', 1, 1, 'Collects Memory Counters for SQL')
+
+-- Create the main table to hold Memory Counter data
 
 CREATE TABLE [dbo].[tblMemoryCounters](
 	[ID] [int] IDENTITY(1,1) NOT NULL,
