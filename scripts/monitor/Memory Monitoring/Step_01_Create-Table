@@ -8,8 +8,12 @@ GO
 
 -- Insert values into the ModuleActions table to cover what the module can do
 
-	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
-		VALUES ((SELECT ID FROM dbo.Modules WHERE ModuleName = 'Memory'), 'CollectData', 'Module_Memory_CollectData', 1, 1, 'Collects Memory Counters for SQL')
+	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SchemaNameSprocName, IsEnabled, ExecutionOrder, ActionDescription)
+		VALUES ((SELECT ID FROM dbo.Modules WHERE ModuleName = 'Memory'), 'CollectData', 'Pulse', 'Module_Memory_CollectData', 1, 1, 'Collects Memory Counters for SQL')
+
+	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
+		VALUES ((SELECT ID FROM Pulse.Modules WHERE ModuleName = 'Memory'), 'Rollup', 'Pulse', 'Module_Memory_MonthlyRollup', 1, 2, 'Performs the Monthly Rollup calculations for the Memory module')
+
 
 -- Create the main table to hold Memory Counter data
 

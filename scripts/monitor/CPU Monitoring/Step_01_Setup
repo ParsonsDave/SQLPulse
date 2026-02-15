@@ -9,9 +9,13 @@ GO
 
 -- Insert values into the ModuleActions table to cover what the module can do
 
-	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
+	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
 	VALUES 
 		((SELECT ID FROM dbo.Modules WHERE ModuleName = 'CPU'), 'CollectData', 'Module_CPU_CollectData', 1, 1, 'Collects CPU Utilization data from the SQL Server instance')
+
+	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
+	VALUES 
+		((SELECT ID FROM Pulse.Modules WHERE ModuleName = 'CPU'), 'Rollup', 'Pulse', 'Module_CPU_MonthlyRollup', 1, 3, 'Performs the Monthly Rollup calculations for the CPU module')
 
 
 
