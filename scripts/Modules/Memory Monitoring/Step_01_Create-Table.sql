@@ -3,13 +3,13 @@ GO
 
 -- Insert values into the Modules table
 
-	INSERT INTO dbo.Modules (ModuleName, ModuleVersion, ModuleDescription, IsEnabled)
+	INSERT INTO Pulse.Modules (ModuleName, ModuleVersion, ModuleDescription, IsEnabled)
 		VALUES ('Memory', 1.1, 'Gathers and records data for memory utilization', 1)
 
 -- Insert values into the ModuleActions table to cover what the module can do
 
-	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SchemaNameSprocName, IsEnabled, ExecutionOrder, ActionDescription)
-		VALUES ((SELECT ID FROM dbo.Modules WHERE ModuleName = 'Memory'), 'CollectData', 'Pulse', 'Module_Memory_CollectData', 1, 1, 'Collects Memory Counters for SQL')
+	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaNameSprocName, IsEnabled, ExecutionOrder, ActionDescription)
+		VALUES ((SELECT ID FROM Pulse.Modules WHERE ModuleName = 'Memory'), 'CollectData', 'Pulse', 'Module_Memory_CollectData', 1, 1, 'Collects Memory Counters for SQL')
 
 	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
 		VALUES ((SELECT ID FROM Pulse.Modules WHERE ModuleName = 'Memory'), 'Rollup', 'Pulse', 'Module_Memory_MonthlyRollup', 1, 2, 'Performs the Monthly Rollup calculations for the Memory module')

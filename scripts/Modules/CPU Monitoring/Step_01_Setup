@@ -3,15 +3,15 @@ GO
 
 -- Insert values into the Modules table
 
-	INSERT INTO dbo.Modules (ModuleName, ModuleVersion, ModuleDescription, IsEnabled)
+	INSERT INTO Pulse.Modules (ModuleName, ModuleVersion, ModuleDescription, IsEnabled)
 	VALUES 
 		('CPU', 1.2, 'Monitors CPU usage of SQL Server and other processes', 1)
 
 -- Insert values into the ModuleActions table to cover what the module can do
 
-	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
+	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
 	VALUES 
-		((SELECT ID FROM dbo.Modules WHERE ModuleName = 'CPU'), 'CollectData', 'Module_CPU_CollectData', 1, 1, 'Collects CPU Utilization data from the SQL Server instance')
+		((SELECT ID FROM Pulse.Modules WHERE ModuleName = 'CPU'), 'CollectData', 'Module_CPU_CollectData', 1, 1, 'Collects CPU Utilization data from the SQL Server instance')
 
 	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
 	VALUES 
