@@ -39,7 +39,7 @@ CREATE TABLE Deadlocks_Counter
 USE [SQLPulse]
 GO
 
-/****** Object:  Table [Pulse].[Deadlocks_MonthlyRollup]    Script Date: 2/22/2026 7:52:00 PM ******/
+/****** Object:  Table [Pulse].[Deadlocks_MonthlyRollup]    Script Date: 2/22/2026 9:12:32 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -57,6 +57,7 @@ CREATE TABLE [Pulse].[Deadlocks_MonthlyRollup](
 	[MonthOverMonthDelta] [int] NULL,
 	[ZeroDeadlockDays] [int] NOT NULL,
 	[PeakHourLocal] [tinyint] NULL,
+	[PeakHourLabel] [nvarchar](10) NULL,
 	[PeakHourCount] [int] NULL,
 	[GeneratedUTC] [datetime2](3) NOT NULL,
 	[GeneratedLocal] [datetime2](3) NOT NULL,

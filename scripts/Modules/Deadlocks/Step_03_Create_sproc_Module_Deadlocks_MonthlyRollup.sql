@@ -1,10 +1,13 @@
 USE [SQLPulse]
 GO
 
+/****** Object:  StoredProcedure [Pulse].[Module_Deadlocks_MonthlyRollup]    Script Date: 2/22/2026 9:13:04 PM ******/
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
+
 
 CREATE PROCEDURE [Pulse].[Module_Deadlocks_MonthlyRollup]
 
@@ -183,6 +186,7 @@ It performs the following activities:
         , MonthOverMonthDelta
         , ZeroDeadlockDays
         , PeakHourLocal
+        , PeakHourLabel
         , PeakHourCount
         , GeneratedUTC
         , GeneratedLocal
@@ -199,6 +203,12 @@ It performs the following activities:
         , @MonthDelta
         , @ZeroDays
         , @PeakHour
+        , CASE 
+                WHEN @PeakHour = 0  THEN '12 AM'
+                WHEN @PeakHour < 12 THEN CAST(@PeakHour AS varchar(2)) + ' AM'
+                WHEN @PeakHour = 12 THEN '12 PM'
+            ELSE CAST(@PeakHour - 12 AS varchar(2)) + ' PM'
+            END
         , @PeakHourCount
         , @GeneratedUTC
         , @GeneratedLocal
@@ -236,3 +246,6 @@ It performs the following activities:
     --        END AS PeakHourLabel;
 
 END;
+GO
+
+
