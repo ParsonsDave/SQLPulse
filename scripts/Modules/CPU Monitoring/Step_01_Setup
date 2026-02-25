@@ -30,4 +30,50 @@ GO
 	) ON [PRIMARY]
 	GO
 
--- 
+-- Create the monthly rollup table for CPU
+
+USE [SQLPulse]
+GO
+
+/****** Object:  Table [Pulse].[CPU_MonthlyRollup]    Script Date: 2/24/2026 10:31:15 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [Pulse].[CPU_MonthlyRollup](
+	[RollupMonth] [date] NOT NULL,
+	[ServerName] [sysname] NOT NULL,
+	[ExpectedPoints] [int] NOT NULL,
+	[CollectedPoints] [int] NOT NULL,
+	[AccuracyPercent] [decimal](5, 2) NOT NULL,
+	[AvgTotalCPU] [decimal](5, 2) NULL,
+	[PeakTotalCPU] [decimal](5, 2) NULL,
+	[P90TotalCPU] [decimal](5, 2) NULL,
+	[MedianSQLCPU] [decimal](5, 2) NULL,
+	[MedianNonSQLCPU] [decimal](5, 2) NULL,
+	[MedianTotalCPU] [decimal](5, 2) NULL,
+	[LoadAboveMedianSQL] [decimal](5, 2) NULL,
+	[LoadAboveMedianNonSQL] [decimal](5, 2) NULL,
+	[LoadAboveMedianTotal] [decimal](5, 2) NULL,
+	[P90SQLCPU] [decimal](5, 2) NULL,
+	[P90NonSQLCPU] [decimal](5, 2) NULL,
+	[PctInTop10Total] [decimal](5, 2) NULL,
+	[SaturationHours] [int] NULL,
+	[WorstHourStart] [datetime2](0) NULL,
+	[SQLPercentOfTotal] [decimal](5, 2) NULL,
+	[NonSQLPercentOfTotal] [decimal](5, 2) NULL,
+	[GeneratedUTC] [datetime2](0) NOT NULL,
+	[GeneratedLocal] [datetime2](0) NOT NULL,
+	[ReportGenerationTimeMethod] [int] NOT NULL,
+ CONSTRAINT [PK_CPU_MonthlyRollup] PRIMARY KEY CLUSTERED 
+(
+	[RollupMonth] ASC,
+	[ServerName] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+
+GO
+
+

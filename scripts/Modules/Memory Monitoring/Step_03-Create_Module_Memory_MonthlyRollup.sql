@@ -1,12 +1,12 @@
-USE [SQLPulse];
+USE [SQLPulse]
+GO
+/****** Object:  StoredProcedure [Pulse].[Module_Memory_MonthlyRollup]    Script Date: 2/24/2026 10:32:23 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
-SET ANSI_NULLS ON;
-GO
-SET QUOTED_IDENTIFIER ON;
-GO
-
-CREATE PROCEDURE [Pulse].[Module_Memory_MonthlyRollup]
+ALTER PROCEDURE [Pulse].[Module_Memory_MonthlyRollup]
 
 AS
 BEGIN
@@ -16,8 +16,8 @@ BEGIN
 /* *******************************************************************************************************************
 
 Source: SQLPulse: Module_Memory_MonthlyRollup
-Build: 1.0
-Build Date: 2026-02-15
+Build: 1.1
+Build Date: 2026-02-24
 
 This is one of the reporting routines for the Memory module of SqlPulse
 This procedures calculates the various Memory values for the monthly report/health check
@@ -123,8 +123,13 @@ It performs the following activities:
             DECLARE @MedianPLE int
             DECLARE @Ple5thPercentile int
             DECLARE @PctPLEBelow600 decimal(10,4)
-            DECLARE @PctPLEBelow300 decimal(10,4)            
+            DECLARE @PctPLEBelow300 decimal(10,4)
 
+		-- And this for when the previous month has no data (avoid divide by zero)
+			DECLARE @TotalPoints decimal(7,2)
+			DECLARE @Below300 int
+			DECLARE @Below600 int
+			
 
 -- 3) Build the base datasets and get them into the reference table #BaseWithDerived
 
@@ -213,8 +218,28 @@ It performs the following activities:
 
     SELECT @Ple5thPercentile = (SELECT DISTINCT(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY PLE) OVER ()) FROM #BaseWithDerived)
 
-    SELECT @PctPLEBelow600 = 100 * ((SELECT COUNT(PLE) FROM #BaseWithDerived WHERE PLE <601) / (SELECT CAST(COUNT(PLE) AS decimal(7,2)) FROM #BaseWithDerived))
-    SELECT @PctPLEBelow300 = 100 * ((SELECT COUNT(PLE) FROM #BaseWithDerived WHERE PLE <301) / (SELECT CAST(COUNT(PLE) AS decimal(7,2)) FROM #BaseWithDerived))
+    --SELECT @PctPLEBelow600 = 100 * ((SELECT COUNT(PLE) FROM #BaseWithDerived WHERE PLE <601) / (SELECT CAST(COUNT(PLE) AS decimal(7,2)) FROM #BaseWithDerived))
+    
+		SELECT @TotalPoints = 
+			(SELECT CAST(COUNT(PLE) AS decimal(7,2)) FROM #BaseWithDerived);
+
+		SELECT @Below600 = 
+			(100 * ((SELECT COUNT(PLE) FROM #BaseWithDerived WHERE PLE <601)))
+
+		SELECT @PctPLEBelow600 =
+		CASE WHEN @TotalPoints = 0 THEN NULL
+			 ELSE 100 * (@Below600 / @TotalPoints)
+		END;
+
+	--SELECT @PctPLEBelow300 = 100 * ((SELECT COUNT(PLE) FROM #BaseWithDerived WHERE PLE <301) / (SELECT CAST(COUNT(PLE) AS decimal(7,2)) FROM #BaseWithDerived))
+
+		SELECT @Below300 = 
+			(100 * ((SELECT COUNT(PLE) FROM #BaseWithDerived WHERE PLE <301)));
+
+		SELECT @PctPLEBelow300 =
+		CASE WHEN @TotalPoints = 0 THEN NULL
+			 ELSE 100 * (@Below300 / @TotalPoints)
+		END;
 
 
 -- 8) BCHR metrics(Avg, min, % below 95): measures RAM vs workload - 5 below 95 is critical
@@ -312,6 +337,3 @@ It performs the following activities:
     DROP TABLE #BaseWithDerived;
 
 END;
-GO
-
-
