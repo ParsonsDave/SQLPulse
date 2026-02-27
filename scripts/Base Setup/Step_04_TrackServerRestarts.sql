@@ -1,13 +1,13 @@
 
 /* *************************************************************************************************
 
-Source: SQL Pulse: Create [dbo].[tblServerRestartDates]
+Source: SQL Pulse: Create [Pulse].[tblServerRestartDates]
 Build: 1.1
 Build Date: 2025-11-29
 
 This script creates both the table and stroed procedure used to track SQL restart dates. 
 
-This table is used by the stored procedure [dbo].[UpdateLastServerStart] to track when the SQL Server instance was last restarted.
+This table is used by the stored procedure [Pulse].[UpdateLastServerStart] to track when the SQL Server instance was last restarted.
 
 NOTE: This may need to be folded up into Step 02 with the global tables. This is a decision for future me.
 
@@ -20,14 +20,14 @@ to SQL, as such expansions may inlude the OS, whch might be hosting multiple SQL
 USE [SQLPulse]
 GO
 
-/****** Object:  Table [dbo].[tblServerRestartDates]    Script Date: 3/2/2025 3:11:00 PM ******/
+/****** Object:  Table [Pulse].[tblServerRestartDates]    Script Date: 3/2/2025 3:11:00 PM ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE TABLE [dbo].[tblServerRestartDates](
+CREATE TABLE [Pulse].[tblServerRestartDates](
 	[ID] [int] IDENTITY(1,1) NOT NULL,
 	[RestartDate] [datetime] NULL,
 	[RunDate] [datetime] NULL
@@ -44,14 +44,14 @@ The stored procedure is below this block
 
 USE [SQLPulse]
 GO
-/****** Object:  StoredProcedure [dbo].[UpdateLastServerStart]    Script Date: 3/2/2025 2:19:13 PM ******/
+/****** Object:  StoredProcedure [Pulse].[UpdateLastServerStart]    Script Date: 3/2/2025 2:19:13 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
 
-CREATE PROCEDURE [dbo].[UpdateLastServerStart]
+CREATE PROCEDURE [Pulse].[UpdateLastServerStart]
 	
 	/* *********************************************************************************
 
@@ -66,7 +66,7 @@ BEGIN
 
 /* *********************************************************************************
 
-Source: SQL Pulse: Update [dbo].[tblServerRestartDates]
+Source: SQL Pulse: Update [Pulse].[tblServerRestartDates]
 Build: 1.1
 Build Date: 2026-01-10
 
@@ -79,7 +79,7 @@ This sproc performs the following activities:
 
    1) Declare the internal variables
    2) Set the variables for processing
-   3) Insert values into [dbo].[tblServerRestartDates] with duplicate checking
+   3) Insert values into [Pulse].[tblServerRestartDates] with duplicate checking
    
 ********************************************************************************* */
 
@@ -95,10 +95,10 @@ This sproc performs the following activities:
 	SET @RunDate = CAST(SYSUTCDATETIME() as smalldatetime)
 
 
--- 3) Insert values into [dbo].[tblServerRestartDates] with duplicate checking
+-- 3) Insert values into [Pulse].[tblServerRestartDates] with duplicate checking
 
-	IF NOT EXISTS (SELECT 1 FROM [dbo].[tblServerRestartDates] WHERE RestartDate = @SystemThreadLogin)
-		INSERT INTO [dbo].[tblServerRestartDates] (RestartDate, RunDate) VALUES (@SystemThreadLogin, @RunDate)
+	IF NOT EXISTS (SELECT 1 FROM [Pulse].[tblServerRestartDates] WHERE RestartDate = @SystemThreadLogin)
+		INSERT INTO [Pulse].[tblServerRestartDates] (RestartDate, RunDate) VALUES (@SystemThreadLogin, @RunDate)
 
 
 END

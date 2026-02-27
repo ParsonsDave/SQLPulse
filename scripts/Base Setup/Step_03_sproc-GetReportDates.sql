@@ -1,7 +1,6 @@
 USE [SQLPulse]
 GO
 
-/****** Object:  StoredProcedure [dbo].[GetReportDates]    Script Date: 11/11/2025 3:41:30 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -9,7 +8,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-CREATE PROCEDURE [dbo].[GetReportDates] 
+CREATE PROCEDURE [Pulse].[Module_Core_GetReportDates] 
 	(@StartofMonth date OUTPUT, @EndofMonth date OUTPUT, @TotalMinutes int OUTPUT)
 	
 AS
@@ -17,9 +16,11 @@ BEGIN
 
 /* ****************************************************************************************************
 
-Source: SQL Pulse: Get Report Dates
-Build: 2.1
-Build Date: 2025-11-11
+Source: SQL Pulse Core Module Stored Procedure: Get Report Dates
+Build: 2.2
+Build Date: 2026-02-26
+
+Note: This stored procedure has never actually been used, but it's elegant enough that I'm retaining it for potential future use.
 
 The purpose of this stored procedure is to return the following values:
 	1) Start of month (ex: 2025-01-01)

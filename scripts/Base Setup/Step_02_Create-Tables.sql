@@ -28,7 +28,7 @@ GO
 
 -- Create the core Parameters table to hold various lookup vaules
 
-	CREATE TABLE [dbo].[Parameters](
+	CREATE TABLE [Pulse].[Parameters](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[ParameterName] [nvarchar](50) NULL,
 		[ParameterValue] [nvarchar](50) NULL,
@@ -43,7 +43,7 @@ GO
 
 -- Create the Modules table to track the installed features
 
-	CREATE TABLE [dbo].[Modules](
+	CREATE TABLE [Pulse].[Modules](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[ModuleName] [nvarchar](50) NULL,
 		[ModuleVersion] [decimal](5, 3) NULL,
@@ -54,7 +54,7 @@ GO
 
 -- Create the ModuleActions table to track options presented by each Module
 
-	CREATE TABLE [dbo].[ModuleActions](
+	CREATE TABLE [Pulse].[ModuleActions](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[ModuleID] [int] NOT NULL,
 		[ActionType] [nvarchar](50) NOT NULL,
@@ -71,26 +71,26 @@ GO
 	) ON [PRIMARY]
 	GO
 
-	ALTER TABLE [dbo].[ModuleActions] ADD  DEFAULT ((1)) FOR [IsEnabled]
+	ALTER TABLE [Pulse].[ModuleActions] ADD  DEFAULT ((1)) FOR [IsEnabled]
 	GO
 
-	ALTER TABLE [dbo].[ModuleActions] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedDate]
+	ALTER TABLE [Pulse].[ModuleActions] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedDate]
 	GO
 
-	ALTER TABLE [dbo].[ModuleActions]  WITH CHECK ADD  CONSTRAINT [FK_ModuleActions_Modules] FOREIGN KEY([ModuleID])
-	REFERENCES [dbo].[Modules] ([ID])
+	ALTER TABLE [Pulse].[ModuleActions]  WITH CHECK ADD  CONSTRAINT [FK_ModuleActions_Modules] FOREIGN KEY([ModuleID])
+	REFERENCES [Pulse].[Modules] ([ID])
 	GO
 
-	ALTER TABLE [dbo].[ModuleActions] CHECK CONSTRAINT [FK_ModuleActions_Modules]
+	ALTER TABLE [Pulse].[ModuleActions] CHECK CONSTRAINT [FK_ModuleActions_Modules]
 	GO
 
-	CREATE INDEX IX_ModuleActions_ModuleID ON dbo.ModuleActions(ModuleID);
+	CREATE INDEX IX_ModuleActions_ModuleID ON Pulse.ModuleActions(ModuleID);
 
 
 -- Create the Module Execution Log table to track processing results
 -- This one is still experimental and may change
 
-	CREATE TABLE [dbo].[ModuleExecutionLog](
+	CREATE TABLE [Pulse].[ModuleExecutionLog](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[ModuleID] [int] NULL,
 		[ActionType] [nvarchar](50) NOT NULL,
@@ -107,18 +107,6 @@ GO
 	) ON [PRIMARY]
 	GO
 
-	ALTER TABLE [dbo].[ModuleExecutionLog] ADD  DEFAULT (sysutcdatetime()) FOR [ExecutionTime]
+	ALTER TABLE [Pulse].[ModuleExecutionLog] ADD  DEFAULT (sysutcdatetime()) FOR [ExecutionTime]
 	GO
 
-
-
-
-/* *************************************************************************************************
-
-BP_Parameters Examples
-
-ID	BP_Parameter	BP_Value	DP_Description
-1	CPUCollectionInterval	240	This is the last [n] minutes to collect CPU data; it should match the run schedule for the associated agent job. The default is 240 minutes (4 hours)
-2	CleanupInterval	90	This is the cleanup interval for the data tables; the default is 90 days. The shortest should be 31-35 days to allow for the monthly rollup reports
-
-********************************************************************************************** */

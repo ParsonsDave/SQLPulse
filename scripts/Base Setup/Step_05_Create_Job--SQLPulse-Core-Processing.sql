@@ -1,11 +1,41 @@
+/* ****************************************************************************************************
+
+Source: SQL Pulse Core Module: Create Core Processing Agent Job
+Build: 1.1
+Build Date: 2026-02-26
+
+This script creates the SQL Agent job [SQLPulse - Core Processing]; this job handles
+all the core processing for the installed features, and is properly noted as job 1 of 2
+for the entire project. 
+
+Operation is very simple: it looks up all enabled actions in the [ModuleActions] table.
+The entries in this table are all stored procedures, and have a key parameter stote in the
+[ExecutionOrder] column, which is the order in which activity phases are executed:
+
+1: Data Collection
+2: External Actions (these are job steps in [SQLPulse - External Actions])
+3: Reserverd for future expansion (very likely to be Alerting Activities)
+4: Rollup Activities (monthly at release, adding weekly, quarteryl, etc later)
+5: Reporting Activities
+
+Note that each Module of Pulse is self-contained, so there is no requirement that any given
+module's peer procedure (collection, rollup, etc) runs before any other.
+
+One the Actions list is generated, the job steps through each until all Actions have been
+completed. All results are logged into the table [ModuleExecutionLog].
+
+>>> NOTE!!!! At release, this code needs to be parameterized to accomodate custom database installation
+
+**************************************************************************************************** */
+
 USE [msdb]
 GO
 
-/****** Object:  Job [SQLPulse - Global Processing]    Script Date: 2/21/2026 6:28:47 PM ******/
+
 BEGIN TRANSACTION
 DECLARE @ReturnCode INT
 SELECT @ReturnCode = 0
-/****** Object:  JobCategory [Data Collector]    Script Date: 2/21/2026 6:28:48 PM ******/
+
 IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'Data Collector' AND category_class=1)
 BEGIN
 EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'Data Collector'
@@ -14,7 +44,7 @@ IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
 END
 
 DECLARE @jobId BINARY(16)
-EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'SQLPulse - Global Processing', 
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'SQLPulse - Core Processing', 
 		@enabled=1, 
 		@notify_level_eventlog=0, 
 		@notify_level_email=0, 
@@ -25,7 +55,7 @@ EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'SQLPulse - Global Processing
 		@category_name=N'Data Collector', 
 		@owner_login_name=N'sa', @job_id = @jobId OUTPUT
 IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
-/****** Object:  Step [Module Actions: Data Collection]    Script Date: 2/21/2026 6:28:48 PM ******/
+/****** Object:  Step [Module Actions: Data Collection]    Script Date: 2/26/2026 9:22:24 PM ******/
 EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Module Actions: Data Collection', 
 		@step_id=1, 
 		@cmdexec_success_code=0, 
