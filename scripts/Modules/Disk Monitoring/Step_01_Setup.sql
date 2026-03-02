@@ -34,38 +34,41 @@ GO
 
 -- Create the table to hold disk latency data
 
-	CREATE TABLE [dbo].[Disk_Latency](
-		[ID] [int] IDENTITY(1,1) NOT NULL,
-		[EventTime] [datetime] NULL,
-		[ReadLatency] [int] NULL,
-		[WriteLatency] [int] NULL,
-		[AvgLatency] [int] NULL,
-		[AvgKBsPerTransfer] [int] NULL,
-		[Drive] [nvarchar](10) NULL,
-		[DatabaseName] [nvarchar](255) NULL,
-		[PhysicalName] [nvarchar](2000) NULL
-	) ON [PRIMARY]
+CREATE TABLE [Pulse].[Disk_Latency](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[EventTimeUTC] [datetime2](3) NOT NULL,
+	[EventTimeLocal] [datetime2](3) NOT NULL,
+	[ReadLatency] [int] NULL,
+	[WriteLatency] [int] NULL,
+	[AvgLatency] [int] NULL,
+	[AvgKBsPerTransfer] [int] NULL,
+	[Drive] [nvarchar](10) NULL,
+	[DatabaseName] [nvarchar](255) NULL,
+	[PhysicalName] [nvarchar](900) NULL
+) ON [PRIMARY]
 	GO
 
 -- Create the table to hold disk size data
 
-	CREATE TABLE [dbo].[Disk_Information](
-		[ID] [int] IDENTITY(1,1) NOT NULL,
-		[EventTime] [datetime] NOT NULL,
-		[DriveLetterOrMountPath] [nvarchar](255) NULL,
-		[Label] [nvarchar](255) NULL,
-		[SizeKB] [bigint] NULL,
-		[FreeSpaceKB] [bigint] NULL,
-		[UsedSpaceKB] [bigint] NULL,
-		[PercentFree] [decimal](5, 2) NULL,
-		[PercentUsed] [decimal](5, 2) NULL,
-		[DriveType] [nvarchar](50) NULL,
-	PRIMARY KEY CLUSTERED 
-	(
-		[ID] ASC
-	)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-	) ON [PRIMARY]
-	GO
+CREATE TABLE [Pulse].[Disk_Information](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[EventTimeUTC] [datetime2](3) NOT NULL,
+	[EventTimeLocal] [datetime2](3) NOT NULL,
+	[DriveLetterOrMountPath] [nvarchar](255) NULL,
+	[Label] [nvarchar](255) NULL,
+	[SizeKB] [bigint] NULL,
+	[FreeSpaceKB] [bigint] NULL,
+	[UsedSpaceKB] [bigint] NULL,
+	[PercentFree] [decimal](5, 2) NULL,
+	[PercentUsed] [decimal](5, 2) NULL,
+	[DriveType] [nvarchar](50) NULL,
+	[IsMountPoint] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 
 -- Create the table for the monthly rollup data
 

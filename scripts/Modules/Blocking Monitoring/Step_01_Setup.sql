@@ -3,22 +3,22 @@ GO
 
 -- Insert values into the Modules table
 
-	INSERT INTO dbo.Modules (ModuleName, ModuleVersion, ModuleDescription, IsEnabled)
+	INSERT INTO Pulse.Modules (ModuleName, ModuleVersion, ModuleDescription, IsEnabled)
 	VALUES 
 		('Blocking', 1.0, 'Monitors SQL Blocking Statistics', 1)
 
 -- Insert values into the ModuleActions table to cover what the module can do
 
-	INSERT INTO dbo.ModuleActions (ModuleID, ActionType, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
+	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, Schema, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
 	VALUES 
-		((SELECT ID FROM dbo.Modules WHERE ModuleName = 'Blocking'), 'CollectData', 'Module_Blocking_CollectData', 1, 1, 'Collects Blocking data from the SQL Server instance')
+		((SELECT ID FROM dbo.Modules WHERE ModuleName = 'Blocking'), 'CollectData', 'Pulse', 'Module_Blocking_CollectData', 1, 1, 'Collects Blocking data from the SQL Server instance')
 
 
 -- Create data table: Database Blocking Statistics
 -- This is cumlative data on the amount of blocking time experienced within each database
 -- It isn't directly mappable to the sessions data (below), but is an excellent insight to what databases have the most blocking activity
 
-CREATE TABLE BlockingTimeDatabases
+CREATE TABLE Pulse.BlockingTimeDatabases
 (
     ID                   bigint IDENTITY(1,1) PRIMARY KEY,
 
@@ -48,7 +48,7 @@ CREATE TABLE BlockingTimeDatabases
 -- This is a snapshot of things blocked at a point in time
 -- Reporting on this data will be focused on the type of command (SELECT, DELETE, etc) and tracking how long sessions are blocked
 
-CREATE TABLE BlockingSessions
+CREATE TABLE Pulse.BlockingSessions
 (
     ID               bigint IDENTITY(1,1) PRIMARY KEY,
 
@@ -68,5 +68,4 @@ CREATE TABLE BlockingSessions
     -- Blocking session info
     BlockedCommand         nvarchar(32) NULL,
     BlockingCommand        nvarchar(32) NULL
-);
 );

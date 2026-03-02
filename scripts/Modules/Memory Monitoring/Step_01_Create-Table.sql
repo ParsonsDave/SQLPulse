@@ -8,7 +8,7 @@ GO
 
 -- Insert values into the ModuleActions table to cover what the module can do
 
-	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaNameSprocName, IsEnabled, ExecutionOrder, ActionDescription)
+	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
 		VALUES ((SELECT ID FROM Pulse.Modules WHERE ModuleName = 'Memory'), 'CollectData', 'Pulse', 'Module_Memory_CollectData', 1, 1, 'Collects Memory Counters for SQL')
 
 	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
@@ -17,9 +17,10 @@ GO
 
 -- Create the main table to hold Memory Counter data
 
-CREATE TABLE [dbo].[tblMemoryCounters](
+CREATE TABLE [Pulse].[Memory_Counters](
 	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[EventTime] [datetime] NULL,
+	[EventTimeUTC] [datetime2](3) NULL,
+	[EventTimeLocal] [datetime2](3) NULL,
 	[ObjectName] [nchar](128) NULL,
 	[CounterName] [nchar](128) NULL,
 	[InstanceName] [nchar](128) NULL,

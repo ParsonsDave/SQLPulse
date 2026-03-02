@@ -1,13 +1,16 @@
 USE [SQLPulse]
 GO
-/****** Object:  StoredProcedure [dbo].[Module_Blocking_CollectData]    Script Date: 1/18/2026 7:22:39 PM ******/
+
+
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
 
 
-ALTER PROCEDURE [dbo].[Module_Blocking_CollectData]
+
+CREATE PROCEDURE [Pulse].[Module_Blocking_CollectData]
 AS
 BEGIN
 	-- SET NOCOUNT ON added to prevent extra result sets from
@@ -51,7 +54,7 @@ It performs the following activities:
 
 -- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
 
-	EXECUTE [dbo].[UpdateLastServerStart]
+	EXECUTE Pulse.UpdateLastServerStart
 
 -- 2) Declare the internal variables and set their values
 		
@@ -83,12 +86,12 @@ It performs the following activities:
 
 	-- Get the most recent data entry for clearing BlockingTimeDatabases (Step 4), if necessary
 
-		DECLARE @LatestBlockingData datetime = (SELECT MAX(EventTimeUTC) FROM BlockingTimeDatabases)
+		DECLARE @LatestBlockingData datetime = (SELECT MAX(EventTimeUTC) FROM Pulse.BlockingTimeDatabases)
 
 
 -- 3) INSERT blocked session data snapshot into table BlockingSessions
 
-	INSERT INTO BlockingSessions
+	INSERT INTO Pulse.BlockingSessions
 
 	SELECT
 		@EventTimeUTC
@@ -112,11 +115,13 @@ It performs the following activities:
 
 -- 4) Check if the server has restarted since the most recent entry in table BlockingTimeDatabases
 		-- If not, delete the most recent data set in the table
+		-- 2026-02-22: commented this code out. This was unintentionally causing there to be no
+		-- history for parts of a month if no restarts happend. Needs more work when the rollup is written
 
-	IF (@LatestBlockingData IS NOT NULL AND @LatestBlockingData > @LastStartup)
-		BEGIN
-			DELETE BlockingTimeDatabases WHERE EventTimeUTC = @LatestBlockingData
-		END
+	--IF (@LatestBlockingData IS NOT NULL AND @LatestBlockingData > @LastStartup)
+	--	BEGIN
+	--		DELETE Pulse.BlockingTimeDatabases WHERE EventTimeUTC = @LatestBlockingData
+	--	END
 
 -- 5) INSERT database blocking time into table BlockingTimeDatabases
 
@@ -129,7 +134,7 @@ It performs the following activities:
 		FROM sys.dm_db_index_operational_stats(NULL, NULL, NULL, NULL)
 		GROUP BY database_id
 	)
-	INSERT INTO BlockingTimeDatabases
+	INSERT INTO Pulse.BlockingTimeDatabases
 	(
 		EventTimeUTC,
 		EventTimeLocal,
@@ -159,6 +164,7 @@ It performs the following activities:
 	-- This space intentionally blank
 
 	
-
-
 END
+GO
+
+

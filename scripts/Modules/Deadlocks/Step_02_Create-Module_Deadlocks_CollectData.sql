@@ -1,7 +1,7 @@
 USE [SQLPulse]
 GO
 
-/****** Object:  StoredProcedure [dbo].[Module_Deadlocks_CollectData]    Script Date: 1/17/2026 4:23:38 PM ******/
+
 SET ANSI_NULLS ON
 GO
 
@@ -10,7 +10,7 @@ GO
 
 
 
-CREATE PROCEDURE [dbo].[Module_Deadlocks_CollectData] 
+CREATE PROCEDURE [Pulse].[Module_Deadlocks_CollectData] 
 	
 AS
 BEGIN
@@ -53,15 +53,16 @@ BEGIN
 
 	-- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
 
-		EXECUTE [dbo].[UpdateLastServerStart]
+		EXECUTE [Pulse].[UpdateLastServerStart]
 
 	-- 2) Declare the internal variables and set their values
 		
 			DECLARE @CurrentValue int
 			DECLARE @PreviousValue int
 			DECLARE @Delta int
-			DECLARE @LastStartup datetime = (SELECT MAX(RestartDate) FROM tblServerRestartDates)
-			DECLARE @EventTime datetime = (SELECT SYSUTCDATETIME())
+			DECLARE @LastStartup datetime2 (3) = (SELECT MAX(RestartDate) FROM tblServerRestartDates)
+			DECLARE @EventTimeUTC datetime2 (3) = (SELECT SYSUTCDATETIME())
+			DECLARE @EventTimeLocal datetime2 (3) = (SELECT SYSDATETIME())
 
 	-- 3) Get the current deadlock counter
 
@@ -73,8 +74,8 @@ BEGIN
 	-- 4) Get the previous counter value from the table Deadlocks_Counter
 
 		SELECT TOP (1) @PreviousValue = RawCounterValue
-			FROM dbo.Deadlocks_Counter
-			ORDER BY SampleID DESC;
+			FROM Pulse.Deadlocks_Counter
+			ORDER BY ID DESC;
 
 	-- 5) Calculate the delta between counter values
 
@@ -87,15 +88,17 @@ BEGIN
 
 	-- 6) Insert the data into table Deadlocks_Counter
 
-		INSERT INTO Deadlocks_Counter
+		INSERT INTO Pulse.Deadlocks_Counter
 			(
-				SampleTimeLocal,
+				EventTimeUTC,
+				EventTimeLocal,
 				RawCounterValue,
 				DeadlocksSinceLast
 			)
 		VALUES
 			(
-				SYSDATETIME(),
+				@EventTimeUTC,
+				@EventTimeLocal,
 				@CurrentValue,
 				@Delta
 			)
@@ -106,4 +109,5 @@ BEGIN
 
 END
 GO
+
 

@@ -1,7 +1,16 @@
 USE [SQLPulse]
 GO
 
-CREATE PROCEDURE [dbo].[Module_CPU_CollectData]
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+CREATE PROCEDURE [Pulse].[Module_CPU_CollectData]
 	
 	/* *********************************************************************************
 
@@ -18,7 +27,7 @@ BEGIN
 
 Source: SQLPulse: Get CPU Utilization
 Build: 1.2
-Build Date: 2026-01-10
+Build Date: 2026-01-25
 
 This sproc gathers and records data for CPU utilization
 NOTE: This is an average CPU counter and does not gather granular data on individual cores
@@ -36,13 +45,13 @@ It performs the following activities:
    7) Object cleanup
 
 ** NOTE ** - Ensure that the AlertVersion variable is always kept up-to-date!
-
+** NOTE2 ** - The AlertVersion variable does not currently exist
 
 ********************************************************************************* */
 
 -- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
 
-	EXECUTE [dbo].[UpdateLastServerStart]
+	EXECUTE [Pulse].[UpdateLastServerStart]
 
 -- 2) Declare the internal variables
 
@@ -53,10 +62,11 @@ It performs the following activities:
 -- 3) Create Temp Table for use in clearing duplicates
 
 	CREATE TABLE #tempCPUUsage(
-		[EventTime] [datetime] NULL,
-		[SqlService] [int] NULL,
-		[IdleProcess] [int] NULL,
-		[NonSqlProcess] [int] NULL
+		[EventTimeUTC] [datetime2] (3) NOT NULL,
+		[EventTimeLocal] [datetime2] (3) NOT NULL,
+		[SqlService] [int] NOT NULL,
+		[IdleProcess] [int] NOT NULL,
+		[NonSqlProcess] [int] NOT NULL
 		)
 	
 
@@ -64,7 +74,8 @@ It performs the following activities:
 
 	INSERT INTO #tempCPUUsage
 
-	SELECT  DATEADD(ms, -1 * ( @Now - [timestamp] ), SYSUTCDATETIME()) AS EventTime,
+	SELECT  DATEADD(ms, -1 * ( @Now - [timestamp] ), SYSUTCDATETIME()) AS EventTimeUTC,
+			DATEADD(ms, -1 * ( @Now - [timestamp] ), GETDATE()) AS EventTimeLocal,
 	        SQLService, 
 	        Idle,
 	        100 - Idle - SQLService AS NonSqlProcesses
@@ -78,17 +89,17 @@ It performs the following activities:
                                 AND record LIKE '%%'
 	                    ) AS x
 		) AS y
-	ORDER BY 1 DESC
+	ORDER BY 1
 
 
 -- 5) Insert non-duplicate values into the main table
 	-- Duplicates are evaluated on the MINUTE by a CAST to smalldatetime, which sets all seconds & fractions thereof to 0
 
-	INSERT INTO [dbo].[CPU_Data] (EventTime, SqlService, IdleProcess, NonSqlProcess)
-	SELECT EventTime, SqlService, IdleProcess, NonSqlProcess
+	INSERT INTO [Pulse].[CPU_Data] (EventTimeUTC, EventTimeLocal, SqlService, IdleProcess, NonSqlProcess)
+	SELECT EventTimeUTC, EventTimeLocal, SqlService, IdleProcess, NonSqlProcess
 	FROM #tempCPUUsage t
-	WHERE NOT EXISTS (SELECT 1 FROM [dbo].[CPU_Data] d
-	WHERE (CAST(EventTime AS smalldatetime) = CAST(t.EventTime AS smalldatetime)));
+	WHERE NOT EXISTS (SELECT 1 FROM [Pulse].[CPU_Data] d
+	WHERE (CAST(EventTimeLocal AS smalldatetime) = CAST(t.EventTimeLocal AS smalldatetime)));
 
 
 -- 6) Debug Line if you pull this out of the sproc and into a normal query

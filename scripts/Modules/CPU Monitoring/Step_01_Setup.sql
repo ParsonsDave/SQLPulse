@@ -11,7 +11,7 @@ GO
 
 	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
 	VALUES 
-		((SELECT ID FROM Pulse.Modules WHERE ModuleName = 'CPU'), 'CollectData', 'Module_CPU_CollectData', 1, 1, 'Collects CPU Utilization data from the SQL Server instance')
+		((SELECT ID FROM Pulse.Modules WHERE ModuleName = 'CPU'), 'CollectData', 'Pulse', 'Module_CPU_CollectData', 1, 1, 'Collects CPU Utilization data from the SQL Server instance')
 
 	INSERT INTO Pulse.ModuleActions (ModuleID, ActionType, SchemaName, SprocName, IsEnabled, ExecutionOrder, ActionDescription)
 	VALUES 
@@ -21,7 +21,7 @@ GO
 
 -- Create the data table(s)
 
-	CREATE TABLE [dbo].[CPU_Data](
+	CREATE TABLE [Pulse].[CPU_Data](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[EventTime] [datetime] NULL,
 		[SqlService] [int] NULL,

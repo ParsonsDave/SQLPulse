@@ -1,7 +1,15 @@
 USE [SQLPulse]
 GO
 
-CREATE PROCEDURE [dbo].[Module_Disk_CollectLatency]
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE PROCEDURE [Pulse].[Module_Disk_CollectLatency]
 	
 	/* *********************************************************************************
 
@@ -33,9 +41,7 @@ This sproc performs the following activities:
    2) Declare the internal variables
    3) Create Temp Table for data processing
    4) Gather and insert the data into the temp table for processing
-   5) Insert the data into the archive table if it is more than a week since the server restart
-		-- The code to prevent duplicates is present despite not being needed
-		-- As noted previously, this is where a variable would be used to adjust the monitor period
+   5) Insert the data into [Pulse].[Disk_Latency]
    6) Debug Line if you pull this out of the sproc and into a normal query
    7) Object cleanup
 
@@ -44,20 +50,22 @@ This sproc performs the following activities:
 
 -- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
 
-	EXECUTE [dbo].[UpdateLastServerStart]
+	EXECUTE [Pulse].[UpdateLastServerStart]
 
 -- 2) Declare the internal variables
 
-	Declare @EventTime as datetime = (SELECT CAST(SYSUTCDATETIME() AS smalldatetime))
-	Declare @LastRestart as datetime = (SELECT TOP 1 RestartDate FROM tblServerRestartDates ORDER BY RestartDate DESC)
-	Declare @PreviousDataDate as datetime = (SELECT TOP 1 EventTime FROM dbo.Disk_Latency ORDER BY EventTime DESC)
+	Declare @EventTimeUTC as datetime2 (3) = (SELECT (SYSUTCDATETIME()))
+	Declare @EventTimeLocal as datetime2 (3) = (SELECT (SYSDATETIME()))
+	Declare @LastRestart as datetime = (SELECT MAX(RestartDate) FROM Pulse.tblServerRestartDates)
+	Declare @PreviousDataDate as datetime = (SELECT MAX(EventTimeUTC) FROM Pulse.Disk_Latency)
 	-- Declare @MinimumMonitorAge as int -- For future use as a user-configurable parameter
 
 
 -- 3) Create Temp Table for data processing
 
 	CREATE TABLE #tempDiskLatency(
-		[EventTime] [datetime] NULL,
+		[EventTimeUTC] [datetime2] (3) NULL,
+		[EventTimeLocal] [datetime2] (3) NULL,
 		[ReadLatency] [int] NULL,
 		[WriteLatency] [int] NULL,
 		[AvgLatency] [int] NULL,
@@ -73,7 +81,8 @@ This sproc performs the following activities:
 	INSERT INTO #tempDiskLatency
 
 	SELECT
-		@EventTime,
+		@EventTimeUTC,
+		@EventTimeLocal,
 		 ReadLatency = CASE WHEN vfs.num_of_reads = 0 
                            THEN 0 ELSE (vfs.io_stall_read_ms / vfs.num_of_reads) END,
         WriteLatency = CASE WHEN vfs.num_of_writes = 0 
@@ -93,24 +102,12 @@ This sproc performs the following activities:
     ORDER BY AvgLatency DESC;
 	
 
--- 5) Insert or replace data depending on whether the server has restarted
+-- 5) Insert the data into [Pulse].[Disk_Latency]
 	-- This is where @MinimumMonitorAge would/will be used in the future
-
-	IF @PreviousDataDate IS NOT NULL
-	BEGIN
-		IF @LastRestart <= @PreviousDataDate
-		BEGIN
-			-- Server has NOT restarted since last sample
-			-- Replace the previous sample
-			DELETE FROM dbo.Disk_Latency
-			WHERE EventTime >= @PreviousDataDate;
-		END
-	END
-
-	-- Insert the new sample
-	INSERT INTO dbo.Disk_Latency
-		(EventTime, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName)
-	SELECT EventTime, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName
+	
+	INSERT INTO Pulse.Disk_Latency
+		(EventTimeUTC, EventTimeLocal, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName)
+	SELECT EventTimeUTC, EventTimeLocal, ReadLatency, WriteLatency, AvgLatency, AvgKBsPerTransfer, Drive, DatabaseName, PhysicalName
 	FROM #tempDiskLatency;
 
 --6) Debug Line if you pull this out of the sproc and into a normal query
@@ -126,3 +123,5 @@ This sproc performs the following activities:
 
 END
 GO
+
+

@@ -1,7 +1,15 @@
-USE [SQLPulse];
+USE [SQLPulse]
 GO
 
-CREATE PROCEDURE [dbo].[Module_Disk_CollectInformation]
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE PROCEDURE [Pulse].[Module_Disk_CollectInformation]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -18,8 +26,8 @@ BEGIN
 
     BEGIN TRY
         EXEC msdb.dbo.sp_start_job 
-            @job_name = N'SQLPulse - Get Disk Information',
-            @step_name = N'DiskInformation';   -- optional but recommended
+            @job_name = N'SQLPulse - External Actions',
+            @step_name = N'Module - Disk - CollectInformation';   -- optional but recommended
     END TRY
     BEGIN CATCH
         -- Bubble the error up so ModuleActions logging can capture it
@@ -28,3 +36,5 @@ BEGIN
     END CATCH;
 END
 GO
+
+
