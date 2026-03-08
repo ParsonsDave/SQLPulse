@@ -20,31 +20,38 @@ BEGIN
     /* *********************************************************************************
 
 Source: SQLPulse: Get Blocking Statistics
-Build: 1.0
-Build Date: 2026-01-18
+Build: 2.0
+Build Date: 2026-03-05
 
 This sproc gathers and records SQL Blocking data
 
 It does this in two ways:
 
 	1) It gets a snapshot of blocked sessions
-	2) It calculates the cumulative blocking time, since engine startup, per database
+	2) It tracks blocking time per database via sys.dm_db_index_operational_stats 
 
 #1 is very straightforward - the data collected is stored deirectly in the target table
-#2 does require some additional work; if the engine hasn't restarted since the last collection date,
-   delete the latest entry, but in either case, insert the new data
+#2 is copied directly from the Waits module. It archives all data, then creates
+   snapshots to track dat by month. The latter is for the monthly rollup procedure,
+   while the former is for historical purposes
 
-Both will be combined with the Blocking waits gathered by that module for reporting
+Both will be combined with the blocking Waits gathered by that module for reporting
 
 It performs the following activities:
 
    1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
    2) Declare the internal variables and set their values
-   3) INSERT blocked session data snapshot into table BlockingSessions
-   4) Check if the server has restarted since the most recent entry in table BlockingTimeDatabases
-		-- If not, delete the most recent data set in the table
-   5) INSERT database blocking time into table BlockingTimeDatabases
-   6) Object cleanup
+   3) INSERT blocked session data snapshot into table Blocking_Sessions
+   4) INSERT database blocking time into table Blocking_TimeDatabases
+	-> This table is a running record of wait stats to be used by a consultant or someone knowledgeable
+	-> The rollup will be done via the entires in the table Blocking_TimeByMonth
+   5) Restart boundary detection
+	-> Create an entry in the Blocking_TimeByMonth table to retain data from before an instance restart
+   6) Detect month boundary
+	-> This has TWO actions: when the month changeover happens,
+	-> insert the previous waits (the last waits of the month
+	-> and then the current data as the start of the month baseline
+   7) Cleanup
 
 ** NOTE ** - Ensure that the AlertVersion variable is always kept up-to-date!
 	--Note 2: There is currently no AlertVersion variable; perhaps later
@@ -58,9 +65,10 @@ It performs the following activities:
 
 -- 2) Declare the internal variables and set their values
 		
-		DECLARE @LastStartup datetime = (SELECT MAX(RestartDate) FROM tblServerRestartDates)
-		DECLARE @EventTimeUTC datetime = (SELECT SYSUTCDATETIME())
-		DECLARE @EventTimeLocal datetime = (SELECT SYSDATETIME())
+		DECLARE @LastStartup datetime = (SELECT MAX(RestartDate) FROM tblServerRestartDates);
+		DECLARE @EventTimeUTC datetime = (SELECT SYSUTCDATETIME());
+		DECLARE @EventTimeLocal datetime = (SELECT SYSDATETIME());
+		DECLARE @RollupMonth date = DATEFROMPARTS(YEAR(@EventTimeUTC), MONTH(@EventTimeUTC), 1);
 	
 	-- Calculate the number of seconds since that time; Default to 1 if it's somehow 0
 		
@@ -84,14 +92,17 @@ It performs the following activities:
 	
 		DECLARE @TotalServerTimeSeconds float = (@UptimeSeconds * @LogicalProcessors)
 
-	-- Get the most recent data entry for clearing BlockingTimeDatabases (Step 4), if necessary
+	-- Get the most recent data entry for clearing Blocking_TimeDatabases (Step 4), if necessary
 
-		DECLARE @LatestBlockingData datetime = (SELECT MAX(EventTimeUTC) FROM Pulse.BlockingTimeDatabases)
+		--DECLARE @LatestBlockingData datetime = (SELECT MAX(EventTimeUTC) FROM Pulse.Blocking_TimeDatabases)
+		DECLARE @LatestBlocking datetime2(3) = (SELECT MAX(EventTimeUTC) FROM Pulse.Blocking_TimeDatabases)
+		DECLARE @LatestBlockingLocal datetime2(3) = (SELECT MAX(EventTimeLocal) FROM Pulse.Blocking_TimeDatabases)
+		SELECT @LatestBlocking as LatestWaits, @EventTimeUTC as EventTimeUTC
 
 
--- 3) INSERT blocked session data snapshot into table BlockingSessions
+-- 3) INSERT blocked session data snapshot into table Blocking_Sessions
 
-	INSERT INTO Pulse.BlockingSessions
+	INSERT INTO Pulse.Blocking_Sessions
 
 	SELECT
 		@EventTimeUTC
@@ -113,17 +124,9 @@ It performs the following activities:
 	WHERE er.blocking_session_id <> 0
 
 
--- 4) Check if the server has restarted since the most recent entry in table BlockingTimeDatabases
-		-- If not, delete the most recent data set in the table
-		-- 2026-02-22: commented this code out. This was unintentionally causing there to be no
-		-- history for parts of a month if no restarts happend. Needs more work when the rollup is written
-
-	--IF (@LatestBlockingData IS NOT NULL AND @LatestBlockingData > @LastStartup)
-	--	BEGIN
-	--		DELETE Pulse.BlockingTimeDatabases WHERE EventTimeUTC = @LatestBlockingData
-	--	END
-
--- 5) INSERT database blocking time into table BlockingTimeDatabases
+-- 4) INSERT database blocking time into table Blocking_TimeDatabases
+	-- This table is a running record of wait stats to be used by a consultant or someone knowledgeable
+	-- The rollup will be done via the entires in the table Blocking_TimeByMonth
 
 	;WITH Stats AS
 	(
@@ -134,7 +137,7 @@ It performs the following activities:
 		FROM sys.dm_db_index_operational_stats(NULL, NULL, NULL, NULL)
 		GROUP BY database_id
 	)
-	INSERT INTO Pulse.BlockingTimeDatabases
+	INSERT INTO Pulse.Blocking_TimeDatabases
 	(
 		EventTimeUTC,
 		EventTimeLocal,
@@ -160,7 +163,128 @@ It performs the following activities:
 	CROSS JOIN sys.dm_os_sys_info si;
 
 
--- Object cleanup
+-- 5) Restart boundary detection
+	-- Create an entry in the Blocking_TimeByMonth table to retain data from before an instance restart
+
+	IF @LatestBlocking IS NOT NULL
+       AND @LastStartup > @LatestBlocking
+    BEGIN
+        INSERT INTO Pulse.Blocking_TimeByMonth (
+              	[SnapshotDateUTC]
+				, [SnapshotDateLocal]
+				, [SnapshotType]
+				, [ServerName]
+				, [RollupMonth]
+				, [DatabaseID]
+				, [DatabaseName]
+				, [RowLockWaitMs]
+				, [PageLockWaitMs]
+				-- , [TotalBlockingWaitMs]  AS ([RowLockWaitMs]+[PageLockWaitMs]) PERSISTED
+				, [UptimeSeconds]
+				, [ProcessorCount]
+				, [TotalProcessorTimeSeconds]
+        )
+        SELECT
+              @LatestBlocking
+			  , @LatestBlockingLocal
+              , 'PreRestart'
+              , @@SERVERNAME
+              , @RollupMonth
+			  , DatabaseID
+              , DatabaseName
+			  , RowLockWaitMs
+              , PageLockWaitMs
+			  -- , TotalBlockingWaitMs
+			  , UptimeSeconds
+			  , ProcessorCount
+			  , TotalProcessorTimeSeconds
+        FROM Pulse.Blocking_TimeDatabases
+        WHERE EventTimeUTC = @LatestBlocking;
+    END;
+
+
+-- 6) Detect month boundary
+	-- This has TWO actions: when the month changeover happens,
+	-- insert the previous waits (the last waits of the month
+	-- and then the current data as the start of the month baseline
+
+    IF @LatestBlocking IS NOT NULL
+       AND (YEAR(@LatestBlocking) <> YEAR(@EventTimeUTC)
+         OR MONTH(@LatestBlocking) <> MONTH(@EventTimeUTC))
+    BEGIN
+        INSERT INTO Pulse.Blocking_TimeByMonth (
+              	[SnapshotDateUTC]
+				, [SnapshotDateLocal]
+				, [SnapshotType]
+				, [ServerName]
+				, [RollupMonth]
+				, [DatabaseID]
+				, [DatabaseName]
+				, [RowLockWaitMs]
+				, [PageLockWaitMs]
+				-- , [TotalBlockingWaitMs]  AS ([RowLockWaitMs]+[PageLockWaitMs]) PERSISTED
+				, [UptimeSeconds]
+				, [ProcessorCount]
+				, [TotalProcessorTimeSeconds]
+        )
+        SELECT
+              @LatestBlocking
+			  , @LatestBlockingLocal
+              , 'EndOfMonth'
+              , @@SERVERNAME
+              , @RollupMonth
+			  , DatabaseID
+              , DatabaseName
+			  , RowLockWaitMs
+              , PageLockWaitMs
+			  -- , TotalBlockingWaitMs
+			  , UptimeSeconds
+			  , ProcessorCount
+			  , TotalProcessorTimeSeconds
+        FROM Pulse.Blocking_TimeDatabases
+        WHERE EventTimeUTC = @LatestBlocking;
+    
+	-----------------------------------------------------------------------------
+	-- Insert StartOfMonth snapshot immediately
+	-----------------------------------------------------------------------------
+
+		INSERT INTO Pulse.Blocking_TimeByMonth (
+              	[SnapshotDateUTC]
+				, [SnapshotDateLocal]
+				, [SnapshotType]
+				, [ServerName]
+				, [RollupMonth]
+				, [DatabaseID]
+				, [DatabaseName]
+				, [RowLockWaitMs]
+				, [PageLockWaitMs]
+				-- , [TotalBlockingWaitMs]  AS ([RowLockWaitMs]+[PageLockWaitMs]) PERSISTED
+				, [UptimeSeconds]
+				, [ProcessorCount]
+				, [TotalProcessorTimeSeconds]
+        )
+        SELECT
+              @LatestBlocking
+			  , @LatestBlockingLocal
+              , 'StartOfMonth'
+              , @@SERVERNAME
+              , @RollupMonth
+			  , DatabaseID
+              , DatabaseName
+			  , RowLockWaitMs
+              , PageLockWaitMs
+			  -- , TotalBlockingWaitMs
+			  , UptimeSeconds
+			  , ProcessorCount
+			  , TotalProcessorTimeSeconds
+        FROM Pulse.Blocking_TimeDatabases
+        WHERE EventTimeUTC = @LatestBlocking;
+
+    END;
+
+
+-- 7) Cleanup
+
 	-- This space intentionally blank
 
 	
