@@ -1,7 +1,6 @@
 USE [SQLPulse]
 GO
 
-
 SET ANSI_NULLS ON
 GO
 
@@ -35,7 +34,7 @@ NOTE: This is to reduce communication spam. A comparison is done between the pre
 
 It performs the following activities:
 
-   1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+   1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
    2) Declare the internal variables
    3) Create Temp Table for use in clearing duplicates
    4) Grab the last 4 hours of CPU usage from sys.dm_os_ring_buffers and put it in the temp table
@@ -49,9 +48,9 @@ It performs the following activities:
 
 ********************************************************************************* */
 
--- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+-- 1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
 
-	EXECUTE [Pulse].[UpdateLastServerStart]
+	EXECUTE [Pulse].Module_Core_ServerRestartDates
 
 -- 2) Declare the internal variables
 

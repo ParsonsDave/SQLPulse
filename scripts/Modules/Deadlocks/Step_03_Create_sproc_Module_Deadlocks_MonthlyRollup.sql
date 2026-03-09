@@ -1,7 +1,6 @@
 USE [SQLPulse]
 GO
 
-/****** Object:  StoredProcedure [Pulse].[Module_Deadlocks_MonthlyRollup]    Script Date: 2/22/2026 9:13:04 PM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -41,7 +40,7 @@ Metrics (This should be copied or moved into the main documentation)
     PeakHourCount - The number of deadlocks in the month that happened during that particula hour
     
 NOTE: At this time, the various Reporting procedures do NOT follow the convention of the other
-stored procedures where the first activity is to execute [dbo].[UpdateLastServerStart]. The
+stored procedures where the first activity is to execute [Pulse].[Module_Core_ServerRestartDates]. The
 current reasoning is that, since the Reporting procedures are in the tier 3 of the 
 Execution order, you can't get here without having gone through all the Monitoring procedures
 This may be revisited in the future; I want to evaluate the run time of the master job in release candidate 1

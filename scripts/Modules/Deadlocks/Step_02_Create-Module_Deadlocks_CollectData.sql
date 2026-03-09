@@ -1,13 +1,11 @@
 USE [SQLPulse]
 GO
 
-
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
-
 
 
 CREATE PROCEDURE [Pulse].[Module_Deadlocks_CollectData] 
@@ -38,7 +36,7 @@ BEGIN
 
 	It performs the following activities:
 
-	   1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+	   1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
 	   2) Declare the internal variables and set their values
 	   3) Get the current deadlock counter
 	   4) Get the previous counter value from the table Deadlocks_Counter
@@ -51,16 +49,16 @@ BEGIN
 
 	********************************************************************************* */
 
-	-- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+	-- 1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
 
-		EXECUTE [Pulse].[UpdateLastServerStart]
+		EXECUTE [Pulse].[Module_Core_ServerRestartDates]
 
 	-- 2) Declare the internal variables and set their values
 		
 			DECLARE @CurrentValue int
 			DECLARE @PreviousValue int
 			DECLARE @Delta int
-			DECLARE @LastStartup datetime2 (3) = (SELECT MAX(RestartDate) FROM tblServerRestartDates)
+			DECLARE @LastStartup datetime2 (3) = (SELECT MAX(RestartDate) FROM Core_ServerRestartDates)
 			DECLARE @EventTimeUTC datetime2 (3) = (SELECT SYSUTCDATETIME())
 			DECLARE @EventTimeLocal datetime2 (3) = (SELECT SYSDATETIME())
 

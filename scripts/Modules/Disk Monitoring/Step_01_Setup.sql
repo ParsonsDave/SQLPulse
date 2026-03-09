@@ -108,8 +108,9 @@ CREATE TABLE [Pulse].[Disk_MonthlyRollup]
     PercentUsed         DECIMAL(5,2) NULL,
     RollupPercentFree   DECIMAL(5,2) NULL,
 
-
+    ------------------------------------------------------------
     -- Growth (Drive-level)
+     ------------------------------------------------------------
     AbsoluteGrowthKB    BIGINT NULL,
     PercentGrowth       DECIMAL(10,4) NULL,
     DaysAtCriticalFree  INT NULL,

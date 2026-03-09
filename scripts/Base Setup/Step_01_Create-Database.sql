@@ -1,22 +1,13 @@
 /* ****************************************************************************************************
 
 Source: SQL Pulse Core Installation: Database Installation
-Build: 1.2
-Build Date: 2026-02-26
+Build: 1.3
+Build Date: 2026-03-08
 
 The purpose of this script is to prepare the create the primary database for SQL Pulse. By default, this
 is named SQLPulse. If you would like the project to be installed into another database, just change
 the variable below. All objects will be installed under the schema name [Pulse], so it will be easy
 to identify them later.
-
-NOTE: While you *can* specify the schema name below, it won't actually change where anything is installed at this time, as
-   the Pulse schema is card-coded into the existing core and module code. This may or may not change in a future release, but I
-   am leaning toward removing the option entirely. Philosophically, I want the project to be easy to identify and remove, 
-   especially if the user wants to install it into an existing database.
-
-Previously, the intent of the 'Throw' block was to prevent any existing database named [SQLPulse] from being overwritten, and 
-this script would exist with an error. While no longer strictly necessary, I have left it in place so the message output exists,
-in the event ov a typo or similar error when setting the database name.
 
 It's no frills and uses the default paths to create the database and log files.
 
@@ -42,7 +33,6 @@ This script performs the following activities:
 -- 1) Declare and set the variables to be used
 
     DECLARE @InstallDatabase sysname = N'SQLPulse'
-    DECLARE @SchemaName sysname = N'Pulse'  -- DO NOT MODIFY THIS VARIABLE UNLESS YOU REALLY, REALLY MEAN IT!
     DECLARE @sql NVARCHAR(MAX);
 
 
@@ -50,8 +40,6 @@ This script performs the following activities:
 
     USE [master];
     
-    USE master;
-
     IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = @InstallDatabase)
     BEGIN
         SET @sql = 'CREATE DATABASE ' + QUOTENAME(@InstallDatabase) + ';';

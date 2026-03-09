@@ -32,10 +32,6 @@ GO
 
 -- Create the monthly rollup table for CPU
 
-USE [SQLPulse]
-GO
-
-/****** Object:  Table [Pulse].[CPU_MonthlyRollup]    Script Date: 2/24/2026 10:31:15 PM ******/
 SET ANSI_NULLS ON
 GO
 

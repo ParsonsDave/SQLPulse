@@ -1,4 +1,14 @@
-CREATE PROCEDURE Pulse.Module_Blocking_MonthlyRollup
+USE [SQLPulse]
+GO
+
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE [Pulse].[Module_Blocking_MonthlyRollup]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -14,7 +24,7 @@ relevant reports. This procedure will execute every 5 minutes along with the res
 this is a deliberate design decision to maintain a dual job configuration
 
 NOTE: At this time, the various Reporting procedures do NOT follow the convention of the other
-stored procedures where the first activity is to execute [dbo].[UpdateLastServerStart]. The
+stored procedures where the first activity is to execute [Pulse].[Module_Core_ServerRestartDates]. The
 current reasoning is that, since the Reporting procedures are in the tier 3 of the 
 Execution order, you can't get here without having gone through all the Monitoring procedures
 This may be revisited in the future; I want to evaluate the run time of the master job in release candidate 1
@@ -274,3 +284,5 @@ It performs the following activities:
 
 END
 GO
+
+

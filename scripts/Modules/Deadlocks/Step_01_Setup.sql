@@ -39,7 +39,6 @@ CREATE TABLE Deadlocks_Counter
 USE [SQLPulse]
 GO
 
-/****** Object:  Table [Pulse].[Deadlocks_MonthlyRollup]    Script Date: 2/22/2026 9:12:32 PM ******/
 SET ANSI_NULLS ON
 GO
 

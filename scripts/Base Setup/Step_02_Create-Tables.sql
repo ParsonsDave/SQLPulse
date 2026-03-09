@@ -15,7 +15,7 @@ The list of tables and their usage:
 
 - Modules: This is a list of all installed Pulse modules - ie, CPU, Disk, even Cleanup.
 
-- ModuleActions: This is a list of actions for the aforementioned Modeuls table. Most modules would have
+- ModuleActions: This is a list of actions for the aforementioned Modules table. Most modules would have
   standard actions like 'Monitor', 'Alert', or 'Report', but some modules might have other unique actions
   This allows expansion, upgrades, etc based on modules
 
@@ -28,7 +28,7 @@ GO
 
 -- Create the core Parameters table to hold various lookup vaules
 
-	CREATE TABLE [Pulse].[Parameters](
+	CREATE TABLE [Pulse].[Core_Parameters](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[ParameterName] [nvarchar](50) NULL,
 		[ParameterValue] [nvarchar](50) NULL,
@@ -43,7 +43,7 @@ GO
 
 -- Create the Modules table to track the installed features
 
-	CREATE TABLE [Pulse].[Modules](
+	CREATE TABLE [Pulse].[Core_Modules](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[ModuleName] [nvarchar](50) NULL,
 		[ModuleVersion] [decimal](5, 3) NULL,
@@ -54,7 +54,7 @@ GO
 
 -- Create the ModuleActions table to track options presented by each Module
 
-	CREATE TABLE [Pulse].[ModuleActions](
+	CREATE TABLE [Pulse].[Core_ModuleActions](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[ModuleID] [int] NOT NULL,
 		[ActionType] [nvarchar](50) NOT NULL,
@@ -71,26 +71,26 @@ GO
 	) ON [PRIMARY]
 	GO
 
-	ALTER TABLE [Pulse].[ModuleActions] ADD  DEFAULT ((1)) FOR [IsEnabled]
+	ALTER TABLE [Pulse].[Core_ModuleActions] ADD  DEFAULT ((1)) FOR [IsEnabled]
 	GO
 
-	ALTER TABLE [Pulse].[ModuleActions] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedDate]
+	ALTER TABLE [Pulse].[Core_ModuleActions] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedDate]
 	GO
 
-	ALTER TABLE [Pulse].[ModuleActions]  WITH CHECK ADD  CONSTRAINT [FK_ModuleActions_Modules] FOREIGN KEY([ModuleID])
-	REFERENCES [Pulse].[Modules] ([ID])
+	ALTER TABLE [Pulse].[Core_ModuleActions]  WITH CHECK ADD  CONSTRAINT [FK_Core_ModuleActions_Core_Modules] FOREIGN KEY([ModuleID])
+	REFERENCES [Pulse].[Core_Modules] ([ID])
 	GO
 
-	ALTER TABLE [Pulse].[ModuleActions] CHECK CONSTRAINT [FK_ModuleActions_Modules]
+	ALTER TABLE [Pulse].[Core_ModuleActions] CHECK CONSTRAINT [FK_Core_ModuleActions_Core_Modules]
 	GO
 
-	CREATE INDEX IX_ModuleActions_ModuleID ON Pulse.ModuleActions(ModuleID);
+	CREATE INDEX IX_Core_ModuleActions_ModuleID ON Pulse.Core_ModuleActions(ModuleID);
 
 
 -- Create the Module Execution Log table to track processing results
 -- This one is still experimental and may change
 
-	CREATE TABLE [Pulse].[ModuleExecutionLog](
+	CREATE TABLE [Pulse].[Core_ModuleExecutionLog](
 		[ID] [int] IDENTITY(1,1) NOT NULL,
 		[ModuleID] [int] NULL,
 		[ActionType] [nvarchar](50) NOT NULL,
@@ -107,6 +107,6 @@ GO
 	) ON [PRIMARY]
 	GO
 
-	ALTER TABLE [Pulse].[ModuleExecutionLog] ADD  DEFAULT (sysutcdatetime()) FOR [ExecutionTime]
+	ALTER TABLE [Pulse].[Core_ModuleExecutionLog] ADD  DEFAULT (sysutcdatetime()) FOR [ExecutionTime]
 	GO
 

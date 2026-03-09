@@ -1,12 +1,14 @@
 USE [SQLPulse]
 GO
-/****** Object:  StoredProcedure [Pulse].[Module_Memory_MonthlyRollup]    Script Date: 2/24/2026 10:32:23 PM ******/
+
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
 
-ALTER PROCEDURE [Pulse].[Module_Memory_MonthlyRollup]
+
+CREATE PROCEDURE [Pulse].[Module_Memory_MonthlyRollup]
 
 AS
 BEGIN
@@ -16,8 +18,8 @@ BEGIN
 /* *******************************************************************************************************************
 
 Source: SQLPulse: Module_Memory_MonthlyRollup
-Build: 1.1
-Build Date: 2026-02-24
+Build: 1.0
+Build Date: 2026-02-15
 
 This is one of the reporting routines for the Memory module of SqlPulse
 This procedures calculates the various Memory values for the monthly report/health check
@@ -30,7 +32,7 @@ Notes:
     - This version targets a less-technical audience with high-signal metrics.
 
 NOTE: At this time, the various Reporting procedures do NOT follow the convention of the other
-stored procedures where the first activity is to execute [dbo].[UpdateLastServerStart]. The
+stored procedures where the first activity is to execute [Pulse].[Module_Core_ServerRestartDates]. The
 current reasoning is that, since the Reporting procedures are in the tier 3 of the 
 Execution order, you can't get here without having gone through all the Monitoring procedures
 This may be revisited in the future; I want to evaluate the run time of the master job in release candidate 1
@@ -337,3 +339,6 @@ It performs the following activities:
     DROP TABLE #BaseWithDerived;
 
 END;
+GO
+
+

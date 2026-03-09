@@ -1,7 +1,6 @@
 USE [SQLPulse]
 GO
 
-
 SET ANSI_NULLS ON
 GO
 
@@ -58,7 +57,7 @@ to be done - for example, to get a usable BCHR number. Should be worth it.
 
 It performs the following activities:
 
-   1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+   1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
    2) Declare the internal variables
    3) Create Temp Table to gather data for processing
    4) Gather and insert Buffer Cache Hit Ratio into the temp table
@@ -70,9 +69,9 @@ It performs the following activities:
 
 ********************************************************************************* */
 
--- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+-- 1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
 
-	EXECUTE [Pulse].[UpdateLastServerStart]
+	EXECUTE [Pulse].[Module_Core_ServerRestartDates]
 
 -- 2) Declare the internal variables
 

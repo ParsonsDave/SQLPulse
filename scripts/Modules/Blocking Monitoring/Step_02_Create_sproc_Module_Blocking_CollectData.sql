@@ -39,7 +39,7 @@ Both will be combined with the blocking Waits gathered by that module for report
 
 It performs the following activities:
 
-   1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+   1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
    2) Declare the internal variables and set their values
    3) INSERT blocked session data snapshot into table Blocking_Sessions
    4) INSERT database blocking time into table Blocking_TimeDatabases
@@ -59,13 +59,13 @@ It performs the following activities:
 ********************************************************************************* */
 
 
--- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+-- 1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
 
-	EXECUTE Pulse.UpdateLastServerStart
+	EXECUTE Pulse.Module_Core_ServerRestartDates
 
 -- 2) Declare the internal variables and set their values
 		
-		DECLARE @LastStartup datetime = (SELECT MAX(RestartDate) FROM tblServerRestartDates);
+		DECLARE @LastStartup datetime = (SELECT MAX(RestartDate) FROM Core_ServerRestartDates);
 		DECLARE @EventTimeUTC datetime = (SELECT SYSUTCDATETIME());
 		DECLARE @EventTimeLocal datetime = (SELECT SYSDATETIME());
 		DECLARE @RollupMonth date = DATEFROMPARTS(YEAR(@EventTimeUTC), MONTH(@EventTimeUTC), 1);

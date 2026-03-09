@@ -1,7 +1,6 @@
 USE [SQLPulse]
 GO
 
-
 SET ANSI_NULLS ON
 GO
 

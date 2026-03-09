@@ -1,7 +1,6 @@
 USE [SQLPulse]
 GO
 
-
 SET ANSI_NULLS ON
 GO
 
@@ -37,7 +36,7 @@ This would be to allow smoothing from any startup stress (for example, on [tempd
 
 This sproc performs the following activities:
 
-   1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+   1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
    2) Declare the internal variables
    3) Create Temp Table for data processing
    4) Gather and insert the data into the temp table for processing
@@ -48,15 +47,15 @@ This sproc performs the following activities:
 
 ********************************************************************************* */
 
--- 1) Get the last server restart time via the stored procedure [dbo].[UpdateLastServerStart]
+-- 1) Get the last server restart time via the stored procedure [Pulse].[Module_Core_ServerRestartDates]
 
-	EXECUTE [Pulse].[UpdateLastServerStart]
+	EXECUTE [Pulse].[Module_Core_ServerRestartDates]
 
 -- 2) Declare the internal variables
 
 	Declare @EventTimeUTC as datetime2 (3) = (SELECT (SYSUTCDATETIME()))
 	Declare @EventTimeLocal as datetime2 (3) = (SELECT (SYSDATETIME()))
-	Declare @LastRestart as datetime = (SELECT MAX(RestartDate) FROM Pulse.tblServerRestartDates)
+	Declare @LastRestart as datetime = (SELECT MAX(RestartDate) FROM Pulse.Core_ServerRestartDates)
 	Declare @PreviousDataDate as datetime = (SELECT MAX(EventTimeUTC) FROM Pulse.Disk_Latency)
 	-- Declare @MinimumMonitorAge as int -- For future use as a user-configurable parameter
 

@@ -42,7 +42,7 @@ EXEC @ReturnCode2 =  msdb.dbo.sp_add_job @job_name=N'SQLPulse - External Actions
 		@category_name=N'[Uncategorized (Local)]', 
 		@owner_login_name=N'sa', @job_id = @jobId2 OUTPUT
 IF (@@ERROR <> 0 OR @ReturnCode2 <> 0) GOTO QuitWithRollback2
-/****** Object:  Step [Module - Disk - CollectInformation]    Script Date: 2/26/2026 10:06:56 PM ******/
+
 EXEC @ReturnCode2 = msdb.dbo.sp_add_jobstep @job_id=@jobId2, @step_name=N'Module - Disk - CollectInformation', 
 		@step_id=1, 
 		@cmdexec_success_code=0, 

@@ -1,36 +1,5 @@
-/* ****************************************************************************************************
-
-Source: SQL Pulse Core Module: Create Core Processing Agent Job
-Build: 1.1
-Build Date: 2026-02-26
-
-This script creates the SQL Agent job [SQLPulse - Core Processing]; this job handles
-all the core processing for the installed features, and is properly noted as job 1 of 2
-for the entire project. 
-
-Operation is very simple: it looks up all enabled actions in the [ModuleActions] table.
-The entries in this table are all stored procedures, and have a key parameter stote in the
-[ExecutionOrder] column, which is the order in which activity phases are executed:
-
-1: Data Collection
-2: External Actions (these are job steps in [SQLPulse - External Actions])
-3: Reserverd for future expansion (very likely to be Alerting Activities)
-4: Rollup Activities (monthly at release, adding weekly, quarteryl, etc later)
-5: Reporting Activities
-
-Note that each Module of Pulse is self-contained, so there is no requirement that any given
-module's peer procedure (collection, rollup, etc) runs before any other.
-
-One the Actions list is generated, the job steps through each until all Actions have been
-completed. All results are logged into the table [ModuleExecutionLog].
-
->>> NOTE!!!! At release, this code needs to be parameterized to accomodate custom database installation
-
-**************************************************************************************************** */
-
 USE [msdb]
 GO
-
 
 BEGIN TRANSACTION
 DECLARE @ReturnCode INT
@@ -55,7 +24,7 @@ EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'SQLPulse - Core Processing',
 		@category_name=N'Data Collector', 
 		@owner_login_name=N'sa', @job_id = @jobId OUTPUT
 IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
-/****** Object:  Step [Module Actions: Data Collection]    Script Date: 2/26/2026 9:22:24 PM ******/
+/****** Object:  Step [Module Actions: Data Collection]    Script Date: 3/8/2026 10:25:00 PM ******/
 EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Module Actions: Data Collection', 
 		@step_id=1, 
 		@cmdexec_success_code=0, 
@@ -82,7 +51,7 @@ CREATE TABLE #MonitorActions
 
 INSERT INTO #MonitorActions (SchemaName, SprocName)
 SELECT SchemaName, SprocName
-FROM Pulse.ModuleActions
+FROM Pulse.Core_ModuleActions
 --WHERE ActionType = ''CollectData''
 --  AND IsEnabled = 1
 WHERE IsEnabled = 1
@@ -104,7 +73,7 @@ BEGIN
         EXEC (@SQL);
 
         -- Optional: log success
-        INSERT INTO Pulse.ModuleExecutionLog
+        INSERT INTO Pulse.Core_ModuleExecutionLog
         (
             ActionType,
             SprocName,
@@ -123,7 +92,7 @@ BEGIN
     END TRY
     BEGIN CATCH
         -- Log failure but continue to next module
-        INSERT INTO Pulse.ModuleExecutionLog
+        INSERT INTO Pulse.Core_ModuleExecutionLog
         (
             ActionType,
             SprocName,
