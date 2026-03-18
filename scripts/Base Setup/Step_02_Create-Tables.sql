@@ -1,112 +1,112 @@
 /* *************************************************************************************************
 
-Source: SQL Pulse: Create Global Tables
-Build: 1.2
-Build Date: 2026-01-10
+Source: SQL Pulse: Create Core Tables
+Build: 1.3
+Build Date: 2026-03-18
 
 This script is designed to build tables that will always be used by the app, no matter which modules
 are installed. 
 
-The list of tables and their usage:
-
-- Parameters: This table holds global parameters for the application. 
-  Examples include data collection intervals, cleanup intervals, and other settings that affect
-  the overall operation of SQL Pulse.
-
-- Modules: This is a list of all installed Pulse modules - ie, CPU, Disk, even Cleanup.
-
-- ModuleActions: This is a list of actions for the aforementioned Modules table. Most modules would have
-  standard actions like 'Monitor', 'Alert', or 'Report', but some modules might have other unique actions
-  This allows expansion, upgrades, etc based on modules
-
-THIS IS A WORK IN PROGRESS
+The tables are commented in-line 
 
 ********************************************************************************************** */
 
 USE [SQLPulse]
 GO
 
--- Create the core Parameters table to hold various lookup vaules
+-- 4) Create the core tables
 
-	CREATE TABLE [Pulse].[Core_Parameters](
-		[ID] [int] IDENTITY(1,1) NOT NULL,
-		[ParameterName] [nvarchar](50) NULL,
-		[ParameterValue] [nvarchar](50) NULL,
-		[ParameterNumber] [decimal](18, 2) NULL,
-		[ParameterDescription] [nvarchar](255) NULL,
-	CONSTRAINT [PK_Parameters] PRIMARY KEY CLUSTERED 
-	(
-		[ID] ASC
-	)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-	) ON [PRIMARY]
-	GO
+	-- The [Parameters] table holds various lookup vaules for the project
+		CREATE TABLE [Pulse].[Core_Parameters](
+			[ID] [int] IDENTITY(1,1) NOT NULL,
+			[ParameterName] [nvarchar](50) NULL,
+			[ParameterValue] [nvarchar](50) NULL,
+			[ParameterNumber] [decimal](18, 2) NULL,
+			[ParameterDescription] [nvarchar](255) NULL,
+		CONSTRAINT [PK_Parameters] PRIMARY KEY CLUSTERED 
+		(
+			[ID] ASC
+		)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+		) ON [PRIMARY]
+		GO
 
--- Create the Modules table to track the installed features
+	-- The [Modules] table tracks the installed features
+		CREATE TABLE [Pulse].[Core_Modules](
+			[ID] [int] IDENTITY(1,1) NOT NULL,
+			[ModuleName] [nvarchar](50) NOT NULL,
+			[ModuleVersion] [decimal](5, 3) NULL,
+			[ModuleDescription] [nvarchar](255) NULL,
+			[IsEnabled] [bit] NOT NULL,
+			[CreatedDate] [datetime2](7) NOT NULL,
+			[ModifiedDate] [datetime2](7) NULL,
+		PRIMARY KEY CLUSTERED 
+		(
+			[ID] ASC
+		)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY],
+		CONSTRAINT [UQ_Modules_ModuleName] UNIQUE NONCLUSTERED 
+		(
+			[ModuleName] ASC
+		)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+		) ON [PRIMARY]
+		GO
 
-	CREATE TABLE [Pulse].[Core_Modules](
-		[ID] [int] IDENTITY(1,1) NOT NULL,
-		[ModuleName] [nvarchar](50) NULL,
-		[ModuleVersion] [decimal](5, 3) NULL,
-		[ModuleDescription] [nvarchar](255) NULL,
-		[IsEnabled] [bit] NULL
-	) ON [PRIMARY]
-	GO
+		ALTER TABLE [Pulse].[Core_Modules] ADD  DEFAULT ((1)) FOR [IsEnabled]
+		GO
 
--- Create the ModuleActions table to track options presented by each Module
+		ALTER TABLE [Pulse].[Core_Modules] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedDate]
+		GO
 
-	CREATE TABLE [Pulse].[Core_ModuleActions](
-		[ID] [int] IDENTITY(1,1) NOT NULL,
-		[ModuleID] [int] NOT NULL,
-		[ActionType] [nvarchar](50) NOT NULL,
-		[SprocName] [nvarchar](50) NOT NULL,
-		[IsEnabled] [bit] NOT NULL,
-		[ExecutionOrder] [int] NULL,
-		[ActionDescription] [nvarchar](255) NULL,
-		[CreatedDate] [datetime2](7) NOT NULL,
-		[ModifiedDate] [datetime2](7) NULL,
-	PRIMARY KEY CLUSTERED 
-	(
-		[ID] ASC
-	)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-	) ON [PRIMARY]
-	GO
+	-- The [ModuleActions] table ennumerates the actions available to each Module listed in the [Modules] table
+		CREATE TABLE [Pulse].[Core_ModuleActions](
+			[ID] [int] IDENTITY(1,1) NOT NULL,
+			[ModuleID] [int] NOT NULL,
+			[ActionType] [nvarchar](50) NOT NULL,
+			[SprocName] [nvarchar](50) NOT NULL,
+			[IsEnabled] [bit] NOT NULL,
+			[ExecutionOrder] [int] NULL,
+			[ActionDescription] [nvarchar](255) NULL,
+			[CreatedDate] [datetime2](7) NOT NULL,
+			[ModifiedDate] [datetime2](7) NULL,
+		PRIMARY KEY CLUSTERED 
+		(
+			[ID] ASC
+		)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+		) ON [PRIMARY]
+		GO
 
-	ALTER TABLE [Pulse].[Core_ModuleActions] ADD  DEFAULT ((1)) FOR [IsEnabled]
-	GO
+		ALTER TABLE [Pulse].[Core_ModuleActions] ADD  DEFAULT ((1)) FOR [IsEnabled]
+		GO
 
-	ALTER TABLE [Pulse].[Core_ModuleActions] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedDate]
-	GO
+		ALTER TABLE [Pulse].[Core_ModuleActions] ADD  DEFAULT (sysutcdatetime()) FOR [CreatedDate]
+		GO
 
-	ALTER TABLE [Pulse].[Core_ModuleActions]  WITH CHECK ADD  CONSTRAINT [FK_Core_ModuleActions_Core_Modules] FOREIGN KEY([ModuleID])
-	REFERENCES [Pulse].[Core_Modules] ([ID])
-	GO
+		ALTER TABLE [Pulse].[Core_ModuleActions]  WITH CHECK ADD  CONSTRAINT [FK_Core_ModuleActions_Core_Modules] FOREIGN KEY([ModuleID])
+		REFERENCES [Pulse].[Core_Modules] ([ID])
+		GO
 
-	ALTER TABLE [Pulse].[Core_ModuleActions] CHECK CONSTRAINT [FK_Core_ModuleActions_Core_Modules]
-	GO
+		ALTER TABLE [Pulse].[Core_ModuleActions] CHECK CONSTRAINT [FK_Core_ModuleActions_Core_Modules]
+		GO
 
-	CREATE INDEX IX_Core_ModuleActions_ModuleID ON Pulse.Core_ModuleActions(ModuleID);
+		CREATE INDEX IX_Core_ModuleActions_ModuleID ON Pulse.Core_ModuleActions(ModuleID);
 
 
--- Create the Module Execution Log table to track processing results
--- This one is still experimental and may change
+	-- The [ModuleExecution] table stores execution results of actions ennumerated in the [ModuleActions] table
+		CREATE TABLE [Pulse].[Core_ModuleExecutionLog](
+			[ID] [int] IDENTITY(1,1) NOT NULL,
+			[ModuleID] [int] NULL,
+			[ActionType] [nvarchar](50) NOT NULL,
+			[SprocName] [nvarchar](128) NOT NULL,
+			[ExecutionTime] [datetime2](7) NOT NULL,
+			[Success] [bit] NOT NULL,
+			[ErrorMessage] [nvarchar](4000) NULL,
+			[RowsAffected] [int] NULL,
+			[AdditionalInfo] [nvarchar](4000) NULL,
+		PRIMARY KEY CLUSTERED 
+		(
+			[ID] ASC
+		)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+		) ON [PRIMARY]
+		GO
 
-	CREATE TABLE [Pulse].[Core_ModuleExecutionLog](
-		[ID] [int] IDENTITY(1,1) NOT NULL,
-		[ModuleID] [int] NULL,
-		[ActionType] [nvarchar](50) NOT NULL,
-		[SprocName] [nvarchar](128) NOT NULL,
-		[ExecutionTime] [datetime2](7) NOT NULL,
-		[Success] [bit] NOT NULL,
-		[ErrorMessage] [nvarchar](4000) NULL,
-		[RowsAffected] [int] NULL,
-		[AdditionalInfo] [nvarchar](4000) NULL,
-	PRIMARY KEY CLUSTERED 
-	(
-		[ID] ASC
-	)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-	) ON [PRIMARY]
-	GO
-
-	ALTER TABLE [Pulse].[Core_ModuleExecutionLog] ADD  DEFAULT (sysutcdatetime()) FOR [ExecutionTime]
-	GO
-
+		ALTER TABLE [Pulse].[Core_ModuleExecutionLog] ADD  DEFAULT (sysutcdatetime()) FOR [ExecutionTime]
+		GO

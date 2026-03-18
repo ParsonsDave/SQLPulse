@@ -189,6 +189,3 @@ EXEC msdb.dbo.sp_update_jobstep
     @job_id = @jobId2,
     @step_id = @stepId,
     @command = @stepCommand;
-
-
-

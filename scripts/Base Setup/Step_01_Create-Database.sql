@@ -1,13 +1,11 @@
 /* ****************************************************************************************************
 
 Source: SQL Pulse Core Installation: Database Installation
-Build: 1.3
-Build Date: 2026-03-08
+Build: 1.5
+Build Date: 2026-03-18
 
-The purpose of this script is to prepare the create the primary database for SQL Pulse. By default, this
-is named SQLPulse. If you would like the project to be installed into another database, just change
-the variable below. All objects will be installed under the schema name [Pulse], so it will be easy
-to identify them later.
+This script creates the SQLPulse database and the [Pulse] schema. The database is created with a fixed 
+initial size and growth settings to avoid issues with auto-growth during initial data collection activities.
 
 It's no frills and uses the default paths to create the database and log files.
 
@@ -17,68 +15,86 @@ wizard - this is extremely common, so a future feature might be to check the pat
 use by the largest database and locate the SQLPulse files there instead, but at this time
 I am not trying to be creative.
 
-NOTE 2: Both VB Code and SSMS may provide visual cues that the THROW command is in error, but it is not.
-
-Note 3: In the release install scripts, the @InstallDatabase variable will be used in several places to update
-various objects. 
+Note 2: The script will gleefully delete any existing database names [SQLPulse]; this is by design,
+so I recommend you be really, REALLY sure you mean it before you execute this script.
 
 This script performs the following activities:
 
-   1) Declare and set the variables to be used
-   2) Evaluate the @InstallDatabase variable and create the database if it does not already exist
+   1) Create the SQPulse database; drop the existing database if it exists
+   2) Be in the right spot
    3) Create the [Pulse] schema in the installation database
 
 **************************************************************************************************** */
 
--- 1) Declare and set the variables to be used
+-- 1) Create the SQPulse database; drop the existing database if it exists
 
-    DECLARE @InstallDatabase sysname = N'SQLPulse'
-    DECLARE @sql NVARCHAR(MAX);
+	-- Drop the database if it's there
+	IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'SQLPulse')
+	BEGIN
+		ALTER DATABASE [SQLPulse] SET  SINGLE_USER WITH ROLLBACK IMMEDIATE;
+		DROP DATABASE SQLPulse;
+	END
+
+	-- Declare variable to use for the creation
+    DECLARE @DataPath   NVARCHAR(512),
+        @LogPath    NVARCHAR(512),
+        @DataFile   NVARCHAR(512),
+        @LogFile    NVARCHAR(512),
+        @SQL        NVARCHAR(MAX);
+
+	-- Retrieve the instance default paths
+	SELECT @DataPath = CAST(SERVERPROPERTY('InstanceDefaultDataPath') AS NVARCHAR(512));
+	SELECT @LogPath  = CAST(SERVERPROPERTY('InstanceDefaultLogPath')  AS NVARCHAR(512));
+
+	-- Ensure trailing backslash
+	IF RIGHT(@DataPath, 1) <> '\' SET @DataPath = @DataPath + '\';
+	IF RIGHT(@LogPath,  1) <> '\' SET @LogPath  = @LogPath  + '\';
+
+	-- Build full file paths
+	SET @DataFile = @DataPath + N'SQLPulse.mdf';
+	SET @LogFile  = @LogPath  + N'SQLPulse_log.ldf';
+
+	-- Build and execute the CREATE DATABASE statement
+	SET @SQL = N'
+	CREATE DATABASE [SQLPulse]
+		CONTAINMENT = NONE
+		ON PRIMARY
+		(
+			NAME        = N''SQLPulse'',
+			FILENAME    = N''' + @DataFile + N''',
+			SIZE        = 262144KB,
+			MAXSIZE     = UNLIMITED,
+			FILEGROWTH  = 131072KB
+		)
+		LOG ON
+		(
+			NAME        = N''SQLPulse_log'',
+			FILENAME    = N''' + @LogFile + N''',
+			SIZE        = 262144KB,
+			MAXSIZE     = 2048GB,
+			FILEGROWTH  = 131072KB
+		);';
+
+	EXEC sp_executesql @SQL;
+	GO
+
+	-- Set recovery model to SIMPLE
+	ALTER DATABASE [SQLPulse] SET RECOVERY SIMPLE;
+	GO
 
 
--- 2) Evaluate the @InstallDatabase variable and create the database if it does not already exist
+-- 2) Be in the right spot
 
-    USE [master];
-    
-    IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = @InstallDatabase)
-    BEGIN
-        SET @sql = 'CREATE DATABASE ' + QUOTENAME(@InstallDatabase) + ';';
-        EXEC(@sql);
-
-        SET @sql = 
-            'ALTER DATABASE ' + QUOTENAME(@InstallDatabase) +
-            ' MODIFY FILE ( NAME = N''' + @InstallDatabase + ''', SIZE = 262144KB, FILEGROWTH = 131072KB );';
-        EXEC(@sql);
-
-        SET @sql = 
-            'ALTER DATABASE ' + QUOTENAME(@InstallDatabase) +
-            ' MODIFY FILE ( NAME = N''' + @InstallDatabase + '_log'', SIZE = 262144KB, FILEGROWTH = 131072KB );';
-        EXEC(@sql);
-    END
-    ELSE
-    BEGIN
-        THROW 51000, '**WARNING** Database [' + @InstallDatabase + '] already exists. No changes made.', 1;
-    END;
+	USE [SQLPulse]
+	GO
 
 
 -- 3) Create the [Pulse] schema in the installation database
 
-    -- Only proceed if the database exists
-    IF EXISTS (SELECT 1 FROM sys.databases WHERE name = @InstallDatabase)
-    BEGIN
-        -- Switch to the installation database
-        SET @sql = 'USE ' + QUOTENAME(@InstallDatabase) + ';';
-        EXEC(@sql);
-
-        -- Create schema only if it does not already exist
-        IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = @SchemaName)
+	DECLARE @sql NVARCHAR(255)
+    IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Pulse')
         BEGIN
-            SET @sql = 'CREATE SCHEMA ' + QUOTENAME(@SchemaName) + ';';
+            SET @sql = 'CREATE SCHEMA Pulse;';
             EXEC(@sql);
         END;
-    END
-    ELSE
-    BEGIN
-        -- Raise a clear error if the database is missing
-        THROW 51001, 'The installation database specified in @InstallDatabase does not exist. Schema creation skipped.', 1;
-    END;
+
