@@ -15,7 +15,7 @@ wizard - this is extremely common, so a future feature might be to check the pat
 use by the largest database and locate the SQLPulse files there instead, but at this time
 I am not trying to be creative.
 
-Note 2: The script will gleefully delete any existing database names [SQLPulse]; this is by design,
+Note 2: The script will gleefully delete any existing database named [SQLPulse]; this is by design,
 so I recommend you be really, REALLY sure you mean it before you execute this script.
 
 This script performs the following activities:

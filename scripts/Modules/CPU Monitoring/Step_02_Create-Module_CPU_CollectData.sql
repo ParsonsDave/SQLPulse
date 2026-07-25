@@ -25,8 +25,8 @@ BEGIN
 /* *********************************************************************************
 
 Source: SQLPulse: Get CPU Utilization
-Build: 1.2
-Build Date: 2026-01-25
+Build: 1.3
+Build Date: 2026-04-11
 
 This sproc gathers and records data for CPU utilization
 NOTE: This is an average CPU counter and does not gather granular data on individual cores
@@ -40,6 +40,7 @@ It performs the following activities:
    4) Grab the last 4 hours of CPU usage from sys.dm_os_ring_buffers and put it in the temp table
    5) Insert non-duplicate values into the main table
 		-- Duplicates are evaluated on the MINUTE by a CAST to smalldatetime, which sets all seconds & fractions thereof to 0
+		-- More specifically, these are calculated by UTC time to avoid any daylight savings time issues. The local time is still recorded for reference.
    6) Debug Line if you pull this out of the sproc and into a normal query
    7) Object cleanup
 
@@ -98,7 +99,7 @@ It performs the following activities:
 	SELECT EventTimeUTC, EventTimeLocal, SqlService, IdleProcess, NonSqlProcess
 	FROM #tempCPUUsage t
 	WHERE NOT EXISTS (SELECT 1 FROM [Pulse].[CPU_Data] d
-	WHERE (CAST(EventTimeLocal AS smalldatetime) = CAST(t.EventTimeLocal AS smalldatetime)));
+	WHERE (CAST(EventTimeUTC AS smalldatetime) = CAST(t.EventTimeUTC AS smalldatetime)));
 
 
 -- 6) Debug Line if you pull this out of the sproc and into a normal query

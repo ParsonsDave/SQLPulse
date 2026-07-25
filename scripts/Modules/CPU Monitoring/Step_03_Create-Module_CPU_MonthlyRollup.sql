@@ -1,14 +1,12 @@
 USE [SQLPulse]
 GO
-
+/****** Object:  StoredProcedure [Pulse].[Module_CPU_MonthlyRollup]    Script Date: 4/25/2026 9:54:02 AM ******/
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-CREATE PROCEDURE [Pulse].[Module_CPU_MonthlyRollup]
+ALTER PROCEDURE [Pulse].[Module_CPU_MonthlyRollup]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -210,6 +208,11 @@ how you might look at this code.
 
 ***************************************************************************************************************************************** */
 
+    -- 2026-04-25: Hoo boy, this section (@PctInTop10Total) is currently a useless statistic
+    -- The *intent* was to find the percentage of total recorded values that's above the Median value
+    -- This has been superceded by the values in step 8 and should be removed if nothing else can
+    -- be made of this column
+    
     ;WITH P AS
     (
         SELECT P90 = (SELECT DISTINCT(PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY TotalCPU) OVER ()) FROM #CPU)
@@ -284,7 +287,7 @@ how you might look at this code.
 
     SET @P90TotalCPU = (SELECT DISTINCT(PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY TotalCPU) OVER ()) FROM #CPU);
 
--- 9) Calculate Saturation values: How many datapoints are above 70% & when does the greatest cpu stress start
+-- 9) Calculate Saturation values: How many datapoints are above 85% & when does the greatest cpu stress start
 
     ---------------------------------------------------------------------
     -- CPU Saturation Hours and Worst Hour Detection
@@ -419,6 +422,3 @@ how you might look at this code.
     )
 
 END
-GO
-
-

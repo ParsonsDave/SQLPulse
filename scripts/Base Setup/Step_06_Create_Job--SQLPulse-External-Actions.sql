@@ -99,6 +99,7 @@ foreach ($volume in $volumes) {
     $percentUsed = 100 - $percentFree
     $driveType   = Get-DriveTypeName $volume.DriveType
     $isMountPoint   = if ($volume.DriveLetter) { 0 } else { 1 }
+    $clusterSize = $volume.BlockSize
 
     # Escape single quotes in SQL strings
     $mountPathSql = $mountPath -replace "''", "''''"
@@ -119,7 +120,8 @@ INSERT INTO $tableName (
     PercentFree,
     PercentUsed,
     DriveType,
-    IsMountPoint
+    IsMountPoint,
+    ClusterSizeBytes
 ) VALUES (
     ''$eventTimeUTC'',
     ''$eventTimeLocal'',
@@ -131,7 +133,8 @@ INSERT INTO $tableName (
     $percentFree,
     $percentUsed,
     ''$driveTypeSql'',
-    $isMountPoint
+    $isMountPoint,
+    $clusterSize
 );
 "@
 
