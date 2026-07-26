@@ -69,25 +69,30 @@ GO
 
 -- Create the monthly rollup table for database information
 
-CREATE TABLE [Pulse].[Module_GeneralHealth_DatabaseRollup] (
-    [RollupID] INT IDENTITY(1,1) NOT NULL,
-    [ExecutionID] UNIQUEIDENTIFIER NOT NULL,
-    [RecordedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    [DatabaseName] SYSNAME NOT NULL,
-    [RecoveryModel] NVARCHAR(60) NOT NULL,
-    [IsPageVerificationNotChecksum] BIT NOT NULL,
-    [HasHighVLFCount] BIT NOT NULL,
-    [VLFCount] INT NOT NULL,
-    [HasPercentAutogrowth] BIT NOT NULL,
-    [IsBackupOverdue] BIT NOT NULL,
-    [LastFullBackupDate] DATETIME NULL,
-    [IsLogBackupOverdue] BIT NOT NULL,
-    [LastLogBackupDate] DATETIME NULL,
-    [HasFilesOnCDisk] BIT NOT NULL,
-    [IsAutoShrinkOn] BIT NOT NULL,
-    [IsAutoCloseOn] BIT NOT NULL,
-    [LastGoodCheckDB] DATETIME NULL,
-    CONSTRAINT [PK_Module_GeneralHealth_DatabaseRollup] PRIMARY KEY CLUSTERED ([RollupID])
-);
+CREATE TABLE [Pulse].[GeneralHealth_Database_MonthlyRollup](
+	[RollupMonth] [date] NOT NULL,
+	[ServerName] [sysname] NOT NULL,
+	[DatabaseName] [sysname] NOT NULL,
+	[RecoveryModel] [nvarchar](60) NOT NULL,
+	[IsPageVerificationNotChecksum] [bit] NOT NULL,
+	[HasHighVLFCount] [bit] NOT NULL,
+	[VLFCount] [int] NOT NULL,
+	[HasPercentAutogrowth] [bit] NOT NULL,
+	[IsBackupOverdue] [bit] NOT NULL,
+	[LastFullBackupDate] [datetime] NULL,
+	[IsLogBackupOverdue] [bit] NOT NULL,
+	[LastLogBackupDate] [datetime] NULL,
+	[HasFilesOnCDisk] [bit] NOT NULL,
+	[IsAutoShrinkOn] [bit] NOT NULL,
+	[IsAutoCloseOn] [bit] NOT NULL,
+	[LastGoodCheckDB] [datetime] NULL,
+ CONSTRAINT [PK_GeneralHealth_Database_MonthlyRollup] PRIMARY KEY CLUSTERED 
+(
+	[RollupMonth] ASC,
+	[ServerName] ASC,
+	[DatabaseName] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 
 

@@ -61,7 +61,7 @@ It performs the following activities:
    8) Calculate the 90th percentile values
    9) Calculate Saturation values: How many datapoints are above 70% & when does the greatest cpu stress start
    10) Calculate SQL vs Non-SQL - Differentiating the type of server load; very valuable on mixed-use systems
-   11) Insert the values into the table Pulse_CPUMonthlyRollup
+   11) Insert the values into the table Pulse.GeneralHealth_System_MonthlyRollup
 
 ******************************************************************************************************************* */
 
@@ -472,7 +472,7 @@ It performs the following activities:
 ********************************************************************************************* */
 
 
--- 8) Insert the values into the table Pulse.Core_System_MonthlyRollup
+-- 8) Insert the values into the table Pulse.GeneralHealth_System_MonthlyRollup
 
 	INSERT INTO [Pulse].[GeneralHealth_System_MonthlyRollup]
 	(
